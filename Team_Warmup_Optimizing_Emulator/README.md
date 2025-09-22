@@ -1,5 +1,13 @@
 # Assignment: Team Warmup Exercise: Optimizing the Emulator
 
+## Overview
+
+**Completed by the Raspberry Pi group:**
+**Authors: Emma Gould      (egould@unm.edu)**<br/>
+         **Nathan J. Rowe  (nrowe1@unm.edu)**<br/>
+         **Qinghong Shao   (qinghongshao@unm.edu)**<br/>
+         **Warren D. Craft (wdcraft@unm.edu)**<br/>
+
 ## Assignment Description/Details from CANVAS Course Site
 
 > Available until Sep 21 at 11:59pm Sep 21 at 11:59pm
@@ -21,11 +29,16 @@
 > for the compiler project group.
 
 ## Overview
-**Authors: Emma Gould      (egould@unm.edu)**
-         **Nathan J. Rowe  (nrowe1@unm.edu)**
-         **Qinghong Shao   (qinghongshao@unm.edu)**
-         **Warren D. Craft (wdcraft@unm.edu)**
 
+instead of taking our fastest emulator, we focused on an emulator
+in C++ that was not even quite completing the sandmark.um criterion …
+
+got that working to be able to run sandmark, with an initial execution
+time on the b146-46.cs.unm.edu machine of approx 3 mins, 40 secs.
+
+gradual improvements …
+
+examples …
 
 
 
