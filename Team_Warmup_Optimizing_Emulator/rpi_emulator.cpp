@@ -50,35 +50,31 @@ int main(int argc, char *argv[])
 
         uint32_t endIt = fileSize;
 
-        bitset<32> bits;
-        bitset<4> op;
-        bitset<3> A;
-        bitset<3> B;
-        bitset<3> C;
-
-        char input;
-
         // run
         for (uint32_t it = 0; it < endIt; ++it)
         {
-            bits = arrays[0][it];
+            bitset<32> bits = arrays[0][it];
 
             // Standard instructions use three registers, A, B, and C. Each register is described by a three
             // bit segment of the instruction. Register A is given by bits 6:8, B is given by bits 3:5, and
             // C is given by bits 0:2.
+            bitset<3> A;
             A[0] = bits[6];
             A[1] = bits[7];
             A[2] = bits[8];
 
+            bitset<3> B;
             B[0] = bits[3];
             B[1] = bits[4];
             B[2] = bits[5];
 
+            bitset<3> C;
             C[0] = bits[0];
             C[1] = bits[1];
             C[2] = bits[2];
 
             // The operation code is given by bits 28:31
+            bitset<4> op;
             op[0] = bits[28];
             op[1] = bits[29];
             op[2] = bits[30];
@@ -179,6 +175,7 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
+                    char input;
                     cin.get(input);
                     registers[C.to_ulong()] = (word)input;
                 }
