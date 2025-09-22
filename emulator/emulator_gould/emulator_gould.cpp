@@ -3,11 +3,13 @@
 #include <bitset>
 #include <vector>
 #include <map>
+#include <cstdint>
 
 using namespace std;
 
 typedef uint32_t word;
 const int wordSize = sizeof(word);
+
 
 int main(int argc, char *argv[])
 {
@@ -15,6 +17,15 @@ int main(int argc, char *argv[])
     word registers[8] = {0};
     map<word, vector<word>> arrays = {};
     vector<word> freeIdentifiers = {};
+
+    /*
+    // Memory Pre-allocation Optimization
+
+    constexpr size_t INITIAL_ARRAY_SIZE = 1024 * 1024;  // 1M words for program array
+    constexpr size_t INITIAL_FREE_IDS = 1024;           // Pre-allocate 1024 IDs
+    arrays[0].reserve(INITIAL_ARRAY_SIZE);              // Reserve space for program array
+    freeIdentifiers.reserve(INITIAL_FREE_IDS);          // Reserve space for ID pool
+    */
 
     // load program
     if (argc > 1)
@@ -71,7 +82,7 @@ int main(int argc, char *argv[])
             op[2] = bits[30];
             op[3] = bits[31];
 
-            u_long opcode = op.to_ulong();
+            unsigned long opcode = op.to_ulong();
 
             if (opcode == 0)
             {
@@ -177,7 +188,7 @@ int main(int argc, char *argv[])
                 // Future allocations may then reuse that identifier.
                 if (registers[C.to_ulong()] == 0)
                 {
-                    // If the program attempts to deallocate the ’0’ array, or to
+                    // If the program attempts to deallocate the '0' array, or to
                     // deallocate an array that is not active, then the machine will Fail.
                     printf("Attempted to deallocate the '0' array.\n");
                     exit(-1);
@@ -204,7 +215,7 @@ int main(int argc, char *argv[])
             else if (opcode == 11)
             {
                 // The machine waits for input on the console. When input arrives, the register C is loaded with the input, which
-                // must be in the range 0–255. If the end of input has been signaled, then the register C is filled with all 1’s.
+                // must be in the range 0–255. If the end of input has been signaled, then the register C is filled with all 1's.
                 if (cin.eof())
                 {
                     registers[C.to_ulong()] = 0xFFFFFFFF;
@@ -218,7 +229,7 @@ int main(int argc, char *argv[])
             }
             else if (opcode == 12)
             {
-                // The array identified by the B register is duplicated and the duplicate replaces the ‘0’ array, regardless of size.
+                // The array identified by the B register is duplicated and the duplicate replaces the '0' array, regardless of size.
                 // The program counter is updated to indicate the word of this array that is described by the offset given in C, where the
                 // value 0 denotes the first word, 1 the second, etc.
                 if (arrays.count(registers[B.to_ulong()]) == 0)
@@ -230,11 +241,6 @@ int main(int argc, char *argv[])
                 if (registers[B.to_ulong()] != 0)
                 {
                     arrays[0] = arrays[registers[B.to_ulong()]];
-                    /*arrays[0].resize(arrays[registers[B.to_ulong()]].size());
-                    for (auto v = 0; v != arrays[registers[B.to_ulong()]].size(); ++v)
-                    {
-                        arrays[0][v] = arrays[registers[B.to_ulong()]][v];
-                    }*/
                 }
 
                 if (registers[C.to_ulong()] >= arrays[0].size())
@@ -269,3 +275,164 @@ int main(int argc, char *argv[])
         return -1;
     }
 }
+
+
+/*
+// ================ Memory Pool Optimization Version ================
+class MemoryPool {
+private:
+    static constexpr size_t BLOCK_SIZE = 1024;  // Size of each memory block
+    vector<vector<word>> blocks;                 // Memory blocks container
+    vector<size_t> freeBlocks;                  // Free block indices
+
+public:
+    MemoryPool(size_t initialBlocks = 16) {
+        blocks.reserve(initialBlocks);
+        freeBlocks.reserve(initialBlocks);
+    }
+
+    vector<word>& allocate() {
+        if (freeBlocks.empty()) {
+            blocks.emplace_back(BLOCK_SIZE, 0);
+            return blocks.back();
+        }
+        size_t index = freeBlocks.back();
+        freeBlocks.pop_back();
+        blocks[index].clear();
+        blocks[index].resize(BLOCK_SIZE, 0);
+        return blocks[index];
+    }
+
+    void deallocate(vector<word>& block) {
+        auto it = find_if(blocks.begin(), blocks.end(), 
+            [&](const vector<word>& b) { return &b == &block; });
+        if (it != blocks.end()) {
+            size_t index = it - blocks.begin();
+            freeBlocks.push_back(index);
+        }
+    }
+};
+
+class ArrayManager {
+private:
+    map<word, vector<word>> largeArrays;      // Container for large arrays
+    MemoryPool smallArrayPool;                // Memory pool for small arrays
+    vector<word> freeIdentifiers;             // List of reusable identifiers
+    word nextId = 1;                          // Next available array ID
+
+    static constexpr size_t POOL_THRESHOLD = 1024;  // Arrays smaller than this use memory pool
+
+public:
+    ArrayManager() {
+        freeIdentifiers.reserve(1024);
+        largeArrays[0].reserve(1024 * 1024);  // Reserve space for program array
+    }
+
+    word allocate(size_t size) {
+        word id;
+        if (!freeIdentifiers.empty()) {
+            id = freeIdentifiers.back();
+            freeIdentifiers.pop_back();
+        } else {
+            id = nextId++;
+        }
+
+        if (size <= POOL_THRESHOLD) {
+            largeArrays[id] = std::move(smallArrayPool.allocate());
+            largeArrays[id].resize(size, 0);
+        } else {
+            largeArrays[id].resize(size, 0);
+        }
+        return id;
+    }
+
+    void deallocate(word id) {
+        if (id == 0) return;
+        
+        auto it = largeArrays.find(id);
+        if (it == largeArrays.end()) return;
+
+        if (it->second.size() <= POOL_THRESHOLD) {
+            smallArrayPool.deallocate(it->second);
+        }
+        largeArrays.erase(it);
+        freeIdentifiers.push_back(id);
+    }
+
+    vector<word>& get(word id) {
+        return largeArrays[id];
+    }
+
+    bool exists(word id) const {
+        return largeArrays.find(id) != largeArrays.end();
+    }
+
+    size_t size(word id) const {
+        auto it = largeArrays.find(id);
+        return it != largeArrays.end() ? it->second.size() : 0;
+    }
+};
+*/
+
+/*
+// ================ Dynamic Memory Allocation Version ================
+struct MemoryBlock {
+    word* data;          // Pointer to the data block
+    size_t size;         // Size of the block
+    bool used;           // Block usage status
+    
+    MemoryBlock(size_t s) : size(s), used(false) {
+        data = new word[size]();
+    }
+    
+    ~MemoryBlock() {
+        delete[] data;
+    }
+};
+
+class DynamicAllocator {
+private:
+    list<MemoryBlock*> blocks;
+    static constexpr size_t MIN_BLOCK_SIZE = 64;
+    static constexpr size_t MAX_BLOCKS = 1024;
+
+public:
+    DynamicAllocator() {
+        for (size_t i = 0; i < 16; ++i) {
+            blocks.push_back(new MemoryBlock(MIN_BLOCK_SIZE));
+        }
+    }
+
+    ~DynamicAllocator() {
+        for (auto block : blocks) {
+            delete block;
+        }
+    }
+
+    word* allocate(size_t size) {
+        size = (size + MIN_BLOCK_SIZE - 1) & ~(MIN_BLOCK_SIZE - 1);
+        for (auto block : blocks) {
+            if (!block->used && block->size >= size) {
+                block->used = true;
+                return block->data;
+            }
+        }
+        if (blocks.size() < MAX_BLOCKS) {
+            MemoryBlock* newBlock = new MemoryBlock(size);
+            newBlock->used = true;
+            blocks.push_back(newBlock);
+            return newBlock->data;
+        }
+        return nullptr;
+    }
+
+    void deallocate(word* ptr) {
+        for (auto block : blocks) {
+            if (block->data == ptr) {
+                block->used = false;
+                return;
+            }
+        }
+    }
+};
+*/
