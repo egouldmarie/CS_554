@@ -62,12 +62,10 @@ int main(int argc, char *argv[])
             A[0] = bits[6];
             A[1] = bits[7];
             A[2] = bits[8];
-
             bitset<3> B;
             B[0] = bits[3];
             B[1] = bits[4];
             B[2] = bits[5];
-
             bitset<3> C;
             C[0] = bits[0];
             C[1] = bits[1];
