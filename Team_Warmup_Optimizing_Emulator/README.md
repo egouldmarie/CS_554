@@ -38,7 +38,7 @@ and easily missed, eventually turning out to involve a swapping of two
 lines of code in the implementation of OpCode 8 (Allocation), that only
 triggered an issue when B and C identified the same register. Once we
 got that working and able to run sandmark, we had an initial execution
-time on the b146-46.cs.unm.edu machine of roughly 3 mins, 40 secs. 
+time on the b146-46.cs.unm.edu machine of roughly 3 mins, 30 secs. 
 
 Initial timing investigations yielded the following data, which helped
 focus our attention on both the most over-all time-consuming and the
@@ -77,6 +77,18 @@ improvements).
 |12	|    38.122	    |    395373297	 |      15.07  | -8.78	| 58.2 |
 |13	|    15.264	    |   2365891287	 |      36.11  |  1.69	| 4.7|
 
+### Initital sandmark.um runtime (b146-46.cs.unm.edu)
+```
+real    3m29.994s
+user    3m29.980s
+sys     0m0.009s
+```
+### Final sandmark.um runtime (b145-46.cs.unm.edu)
+```
+real	0m40.217s 
+user	0m40.206s 
+sys	0m0.008s
+```
 
 EXAMPLE TRACES are shown further below for program file sandmark.um
 run remotely on machines b146-46.cs.unm.edu and risc-machine-2.cs.unm.edu. 
