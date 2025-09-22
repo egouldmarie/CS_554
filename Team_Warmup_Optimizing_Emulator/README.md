@@ -26,6 +26,18 @@
 > Keep in mind, this submission will count for everyone in your Groups
 > for the compiler project group.
 
+## Compiling the Emulator
+
+To compile normally, with no internal no timing functions:<br/>
+
+`g++ ./rpi_emulator.cpp -o emulator -O3`
+
+To compile with internal timing functions (which makes the program
+run much more slowly but gives a good sense of the distribution of
+OpCode frequency and time spent):<br/>
+
+`g++ ./rpi_emulator.cpp -o emulator -O3 -DDEBUG`
+
 ## Overview
 
 We were tempted to work on that emulator among us that was already the
