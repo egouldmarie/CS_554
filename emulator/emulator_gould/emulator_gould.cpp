@@ -4,8 +4,6 @@
 #include <vector>
 #include <map>
 
-//&Jlqou8^w$w8%sYG
-
 using namespace std;
 
 typedef uint32_t word;
