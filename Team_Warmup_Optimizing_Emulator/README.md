@@ -83,7 +83,7 @@ run remotely on machines b146-46.cs.unm.edu and risc-machine-2.cs.unm.edu.
 
 
 ## EXAMPLES
-### sandmark.um on b146
+### sandmark.um on b146:
 
 ```
 Output from b146-46: 
@@ -221,7 +221,7 @@ user	0m40.206s
 sys	0m0.008s 
 ```
 
-###sandmark.um on risc-machine-2:
+### sandmark.um on risc-machine-2:
 
 ```
 Output from risc-machine-2: 
@@ -358,7 +358,7 @@ user	4m14.749s
 sys	0m0.048s
 ```
 
-When running umix.um on the improved emulator, this is the output: 
+### umix.um:
 
 ```
 12:00:00 1/1/19100 
