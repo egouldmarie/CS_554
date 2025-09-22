@@ -187,18 +187,6 @@ int main(int argc, char *argv[])
                 start = Clock::now();
                 // The array identified by the register C is deallocated (freed).
                 // Future allocations may then reuse that identifier.
-                if (registers[C] == 0)
-                {
-                    // If the program attempts to deallocate the ’0’ array, or to
-                    // deallocate an array that is not active, then the machine will Fail.
-                    printf("Attempted to deallocate the '0' array.\n");
-                    exit(-1);
-                }
-                else if (arrays.count(registers[C]) == 0)
-                {
-                    printf("Attempted to deallocate unallocated array.\n");
-                    exit(-1);
-                }
 
                 // Free memory in constant time
                 // vector<word>().swap(arrays[registers[C]]); // Free memory
