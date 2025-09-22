@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 
         if (!filestream)
         {
-            printf("File not found.\n");
+            // file not found
             exit(-1);
         }
 
@@ -150,7 +150,6 @@ int main(int argc, char *argv[])
                     }
                 }
                 // The machine stops computation.
-                // printf("Halt.\n");
                 exit(0);
             case 8:
                 start = Clock::now();
@@ -159,16 +158,11 @@ int main(int argc, char *argv[])
                 // is placed in the B register, and it identifies the new array.
                 if (numArrays < 0xFFFFFFFF)
                 {
-                    word idx;
-                    if (freeIdentifiers.size() > 0)
+                    word idx = numArrays;
+                    if (freeIdentifiers.begin() != freeIdentifiers.end())
                     {
                         idx = freeIdentifiers.back();
                         freeIdentifiers.pop_back();
-                    }
-                    else
-                    {
-                        // The next size up will always be free since we never shrink the map
-                        idx = numArrays;
                     }
 
                     arrays[idx] = vector<word>(registers[C], 0);
@@ -177,7 +171,7 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    printf("Ran out of arrays to allocate.\n");
+                    // ran out of arrays to allocate
                     exit(-1);
                 }
                 opCounts[op]++;
@@ -199,11 +193,6 @@ int main(int argc, char *argv[])
             case 10:
                 start = Clock::now();
                 //  The value in the register C is displayed on the console. Only values in the range 0–255 are allowed.
-                if (registers[C] > 255)
-                {
-                    printf("Output was larger than 255.\n");
-                    exit(-1);
-                }
                 cout << (char)registers[C];
                 opCounts[op]++;
                 opTimes[op] += Clock::now() - start;
@@ -250,7 +239,6 @@ int main(int argc, char *argv[])
                 break;
             default:
                 // unrecognized opcode
-                printf("Unrecognized opcode.\n");
                 exit(-1);
                 break;
             }
