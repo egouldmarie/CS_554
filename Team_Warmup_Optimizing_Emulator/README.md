@@ -1,8 +1,6 @@
 # Assignment: Team Warmup Exercise: Optimizing the Emulator
 
-## Overview
-
-**Completed by the Raspberry Pi group:**
+## Completed by the Raspberry Pi group:
 **Authors: Emma Gould      (egould@unm.edu)**<br/>
          **Nathan J. Rowe  (nrowe1@unm.edu)**<br/>
          **Qinghong Shao   (qinghongshao@unm.edu)**<br/>
