@@ -1,12 +1,9 @@
-#include <bitset>
+#ifdef DEBUG
 #include <chrono>
-#include <cstdint>
-#include <cstdlib>
-#include <cstring>
-#include <fstream>
 #include <iomanip>
+#endif
+#include <fstream>
 #include <iostream>
-#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -24,7 +21,7 @@ const int wordSize = sizeof(word);
 int main(int argc, char *argv[]) {
   // initialize machine
   word registers[8] = {0};
-  unordered_map<word, vector<word>> arrays = {};
+  unordered_map<word, tuple<word *, word>> arrays = {};
   vector<word> freeIdentifiers = {};
 
   uint32_t numArrays = 0;
@@ -46,23 +43,26 @@ int main(int argc, char *argv[]) {
     }
 
     filestream.seekg(0, ios::end);
-    size_t fileSize = filestream.tellg() / 4;
+    word fileSize = filestream.tellg() / 4;
     filestream.seekg(0, ios::beg);
 
     word tempWord;
+    word *array0 = new word[fileSize];
     for (auto i = 0; i < fileSize; ++i) {
       filestream.read(reinterpret_cast<char *>(&tempWord), wordSize);
       // Swap bytes from big to little endian
-      tempWord = __builtin_bswap32(tempWord);
-      arrays[0].push_back(tempWord);
+      array0[i] = __builtin_bswap32(tempWord);
     }
     filestream.close();
+    // arrays[0] = make_tuple(array0, fileSize);
+    get<0>(arrays[0]) = array0;
+    get<1>(arrays[0]) = fileSize;
     ++numArrays;
 
     // run
     word size = fileSize;
     for (word it = 0; it < size; ++it) {
-      word bits = arrays[0][it];
+      word bits = get<0>(arrays[0])[it];
 
       // Standard instructions use three registers, A, B, and C. Each register
       // is described by a three bit segment of the instruction. Register A is
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
 #endif
         // The register A receives the value stored at offset in register C in
         // the array identified by B.
-        registers[A] = arrays[registers[B]][registers[C]];
+        registers[A] = get<0>(arrays[registers[B]])[registers[C]];
 #ifdef DEBUG
         opCounts[op]++;
         opTimes[op] += Clock::now() - start;
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
 #endif
         // The array identified by A is updated at the offset in register B to
         // store the value in register C.
-        arrays[registers[A]][registers[B]] = registers[C];
+        get<0>(arrays[registers[A]])[registers[B]] = registers[C];
 #ifdef DEBUG
         opCounts[op]++;
         opTimes[op] += Clock::now() - start;
@@ -201,7 +201,11 @@ int main(int argc, char *argv[]) {
             freeIdentifiers.pop_back();
           }
 
-          arrays[idx] = vector<word>(registers[C], 0);
+          // word size = registers[C];
+          // word *array = new word[registers[C]];
+          // arrays[idx] = make_tuple(new word[registers[C]], registers[C]);
+          get<0>(arrays[idx]) = new word[registers[C]];
+          get<1>(arrays[idx]) = registers[C];
           registers[B] = idx;
           ++numArrays;
         } else {
@@ -219,10 +223,7 @@ int main(int argc, char *argv[]) {
 #endif
         // The array identified by the register C is deallocated (freed).
         // Future allocations may then reuse that identifier.
-
-        // Free memory in constant time
-        // vector<word>().swap(arrays[registers[C]]); // Free memory
-        arrays.erase(registers[C]);
+        // arrays.erase(registers[C]);
         freeIdentifiers.push_back(registers[C]);
         --numArrays;
 #ifdef DEBUG
@@ -272,8 +273,14 @@ int main(int argc, char *argv[]) {
         // described by the offset given in C, where the value 0 denotes the
         // first word, 1 the second, etc.
         if (registers[B] != 0) {
-          arrays[0] = arrays[registers[B]];
-          size = arrays[0].size();
+          tuple<word *, word> temp = arrays[registers[B]];
+          word *src = get<0>(temp);
+          word newSize = get<1>(temp);
+          word *dest = new word[newSize];
+          copy(src, src + newSize, dest);
+          get<0>(arrays[0]) = dest;
+          get<1>(arrays[0]) = newSize;
+          size = newSize;
         }
 
         it = registers[C] - 1;
