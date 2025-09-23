@@ -72,12 +72,15 @@ in execution time for prog-0 by a factor of appox. 1.7 on b146 and by
 a factor of approx. 1.9 on risc-2.
 
 Comparing the two _machines_ (b146 vs risc-2), we see an increase
-in execution time on risc-2 over b146 by a factor of approx. 7.3 for
-prog-0, and by a factor of approx. 6.4 for prog-10. Those time factors
-are similar, but it's interesting to note that they're not identical,
-with the differences due to differences in how compilation interacts
-with the actual algorithms being used in the two different programs
-(related to our class discussion Tues 9/23/25 of leader-board times).
+in execution time on risc-2 (213.97 s) over b146 (29.4 s) by a factor
+of approx. 7.3 for prog-0, and an increase on risc-2 (110.04 s) over
+b146 (17.26 s) by a factor of approx. 6.4 for prog-10. Those time
+factors are similar, but it's interesting to note that they're not
+identical, with the differences possibly due to differences in how
+compilation interacts with the actual algorithms being used in the two
+different programs (related to our class discussion Tues 9/23/25 of
+how the leader-board times change ordering with changes in underlying
+task loads).
 
 <br/>
 
