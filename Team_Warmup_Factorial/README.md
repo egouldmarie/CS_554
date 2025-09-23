@@ -67,12 +67,27 @@ of this document.
 
 <br/>
 
+Comparing the two _programs_ (prog-0 vs prog-10), we see an increase
+in execution time for prog-0 by a factor of appox. 1.7 on b146 and by
+a factor of approx. 1.9 on risc-2.
+
+Comparing the two _machines_ (b146 vs risc-2), we see an increase
+in execution time on risc-2 over b146 by a factor of approx. 7.3 for
+prog-0, and by a factor of approx. 6.4 for prog-10. Those time factors
+are similar, but it's interesting to note that they're not identical,
+with the differences due to differences in how compilation interacts
+with the actual algorithms being used in the two different programs
+(related to our class discussion Tues 9/23/25 of leader-board times).
+
+<br/>
+
 ## Example Execution Traces
 
 <br/>
 
 #### Emulator on b146, computing 500! using factorial-program-0.um
 
+<br/>
 
 ```
 wdcraft@b146-46:~/CS554_2025Fall/GROUP_EMULATOR_IN_C++$ g++ -O3 rpi_emulator.cpp -o rpi_emulator
@@ -99,8 +114,11 @@ wdcraft@b146-46:~/CS554_2025Fall/GROUP_EMULATOR_IN_C++$ echo 500 | time ./rpi_em
 48inputs+0outputs (2major+169minor)pagefaults 0swaps
 ```
 
-### rpi_emulator (C++) on b146
-### computing 10000! using factorial-program-10.um
+<br/>
+
+#### Emulator on b146, computing 10000! using factorial-program-10.um
+
+<br/>
 
 ```
 wdcraft@b146-46:~/CS554_2025Fall/GROUP_EMULATOR_IN_C++$ echo 10000 | time ./rpi_emulator factorial-program-10.um
@@ -109,8 +127,11 @@ wdcraft@b146-46:~/CS554_2025Fall/GROUP_EMULATOR_IN_C++$ echo 10000 | time ./rpi_
 8inputs+0outputs (0major+303minor)pagefaults 0swaps
 ```
 
-### rpi_emulator (C++) on risc-machine-2
-### computing 500! using factorial-program-0.um
+<br/>
+
+#### Emulator on risc-2, computing 500! using factorial-program-0.um
+
+<br/>
 
 ```
 wdcraft@risc-machine-2:~/CS554_2025Fall/GROUP_EMULATOR_IN_C++$ g++ -O3 rpi_emulator.cpp -o rpi_emulator
@@ -137,8 +158,11 @@ wdcraft@risc-machine-2:~/CS554_2025Fall/GROUP_EMULATOR_IN_C++$ echo 500 | time .
 56inputs+0outputs (1major+150minor)pagefaults 0swaps
 ```
 
-### rpi_emulator (C++) on risc-machine-2
-### computing 10000! using factorial-program-10.um
+<br/>
+
+#### Emulator on risc-2, computing 10000! using factorial-program-10.um
+
+<br/>
 
 ```
 wdcraft@risc-machine-2:~/CS554_2025Fall/GROUP_EMULATOR_IN_C++$ g++ -O3 rpi_emulator.cpp -o rpi_emulator
