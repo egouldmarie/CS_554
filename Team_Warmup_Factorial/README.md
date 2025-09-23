@@ -2,58 +2,77 @@
 
 ## Completed by the Raspberry Pi group:
 
+<br/>
+
 **Emma Gould (egould@unm.edu)**<br/>
 **Nathan J. Rowe (nrowe1@unm.edu)**<br/>
 **Qinghong Shao (qinghongshao@unm.edu)**<br/>
 **Warren D. Craft (wdcraft@unm.edu)**<br/>
 
+<br/>
+
 ## Assignment Description/Details from CANVAS Course Site
 
-> Available until Sep 23, 2025 11:59pm
-> 
-> The program `smlffact` (previously posted) computes factorials.
-> However, it produces incorrect results, even for modest input values,
-> because of numerical overflow. Here are two programs that produce
-> correct results to at least 100000!. 
-> 
-> A slow program: `factorial-program-0.um`
-> > 
-> A fast program: `factorial-program-10.um`
-> 
-> Use the following commands to time your emulator:
-> 
-> `echo 500 | time emulator factorial-program-0.um`
-> 
-> and
-> 
-> `echo 10000 | time emulator factorial-program-10.um`
-> 
-> As before, report results for both b146-46.cs.unm.edu and
-> risc-machine-2.cs.unm.edu.
->
+<br/>
+
+See Appendix A for original assignment details.
+
+<br/>
+
+## Method
+
+<br/>
+
+Testing was performed on the afternoon of Mon 9/22/2025, by remote ssh
+into the b146-46.cs.unm.edu (b146) and risc-machine-2.cs.unm.edu
+(risc-v) machines.
+
+Our C++-based emulator (rpi_emulator) was freshly-compiled on each
+machine just before each tranche of data collection using g++ with
+optimization flag -O3 (see example compilations and executions
+further below).
+
+The emulator program was then repeatedly run on each machine and for
+each program, in the following order (with approximate times):
+
+- on risc-v using
+`echo 500 | time ./rpi_emulator factorial-program-0.um`, approx
+12:40 – 3:00 pm for a total of 10 runs;
+
+- on b146 using
+`echo 500 | time ./rpi_emulator factorial-program-0.um`, approx
+3:05 – 3:15 pm for a total of 10 runs.
+
+- on b146 using
+`echo 10000 | time ./rpi_emulator factorial-program-10.um`, approx
+3:35 – 3:45 pm for a total of 10 runs.
+- on risc-v using
+`echo 10000 | time ./rpi_emulator factorial-program-10.um`, approx
+3:45 – 4:10 pm for a total of 10 runs.
+
+<br/>
 
 ## Results
 
-Results for emulator in C (showing execution time in secs ±1 stdev)
-(raw data available in the Appendix at the end of this document).
+<br/>
 
-| machine     | prog-0 (500!) | prog-10 (10000!) |
-| :---------- | -----------:  | ---------------: |
-| b146        | 0.00          | 0.00             |
-| risc-2      | 0.00          | 0.00             |
-
-Results for emulator in C++ (showing execution time in secs ±1 stdev)
-(raw data available in the Appendix at the end of this document).
+Results for the emulator are shown below, showing execution time in
+secs (±1 stdev). The raw data are available in Appendix B at the end
+of this document.
 
 | machine     | prog-0 (500!)   | prog-10 (10000!) |
 | :---------: | :-------------  | :--------------- |
 | b146        |  29.40 (± 0.11) |  17.26 (± 0.31)  |
 | risc-2      | 213.97 (± 0.04) | 110.04 (± 0.19)  |
 
+<br/>
+
 ## Example Execution Traces
 
-### rpi_emulator (C++) on b146
-### computing 500! using factorial-program-0.um
+<br/>
+
+#### Emulator on b146, computing 500! using factorial-program-0.um
+
 
 ```
 wdcraft@b146-46:~/CS554_2025Fall/GROUP_EMULATOR_IN_C++$ g++ -O3 rpi_emulator.cpp -o rpi_emulator
@@ -129,9 +148,42 @@ wdcraft@risc-machine-2:~/CS554_2025Fall/GROUP_EMULATOR_IN_C++$ echo 10000 | time
 56inputs+0outputs (1major+283minor)pagefaults 0swaps
 ```
 
-## APPENDIX: RAW DATA
+## APPENDIX A: Assignment Description/Details from CANVAS Course Site
+
+<br/>
+
+> Available until Sep 23, 2025 11:59pm
+> 
+> The program `smlffact` (previously posted) computes factorials.
+> However, it produces incorrect results, even for modest input values,
+> because of numerical overflow. Here are two programs that produce
+> correct results to at least 100000!. 
+> 
+> A slow program: `factorial-program-0.um`
+> > 
+> A fast program: `factorial-program-10.um`
+> 
+> Use the following commands to time your emulator:
+> 
+> `echo 500 | time emulator factorial-program-0.um`
+> 
+> and
+> 
+> `echo 10000 | time emulator factorial-program-10.um`
+> 
+> As before, report results for both b146-46.cs.unm.edu and
+> risc-machine-2.cs.unm.edu.
+>
+
+<br/>
+
+## APPENDIX B: RAW DATA
+
+<br/>
 
 ### Using: rpi_emulator (C++)
+
+<br/>
 
 machines:  b146-46.cs.unm.edu VS. risc-machine-2.cs.unm.edu<br/>
 program:   factorial-program-0.um<br/>
