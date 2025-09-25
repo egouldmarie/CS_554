@@ -1,4 +1,3 @@
-#include <bitset>
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
@@ -24,10 +23,8 @@ const int wordSize = sizeof(word);
 int main(int argc, char *argv[]) {
   // initialize machine
   word registers[8] = {0};
-  unordered_map<word, vector<word>> arrays = {};
+  vector<vector<word>> arrays = {};
   vector<word> freeIdentifiers = {};
-
-  uint32_t numArrays = 0;
 
 #ifdef DEBUG
   // Timing measurements
@@ -49,101 +46,117 @@ int main(int argc, char *argv[]) {
     size_t fileSize = filestream.tellg() / 4;
     filestream.seekg(0, ios::beg);
 
+    arrays.emplace_back(vector<word>());
     word tempWord;
     for (auto i = 0; i < fileSize; ++i) {
       filestream.read(reinterpret_cast<char *>(&tempWord), wordSize);
       // Swap bytes from big to little endian
       tempWord = __builtin_bswap32(tempWord);
-      arrays[0].push_back(tempWord);
+      arrays[0].emplace_back(tempWord);
     }
     filestream.close();
-    ++numArrays;
 
     // run
     word size = fileSize;
     for (word it = 0; it < size; ++it) {
       word bits = arrays[0][it];
 
-      // Standard instructions use three registers, A, B, and C. Each register
-      // is described by a three bit segment of the instruction. Register A is
-      // given by bits 6:8, B is given by bits 3:5, and C is given by bits 0:2.
-      word A = (bits & 0x000001E0) >> 6;
-      word B = (bits & 0x00000038) >> 3;
-      word C = (bits & 0x00000007);
-
       // The operation code is given by bits 28:31
-      word op = bits >> 28;
+      int op = bits >> 28;
+
 #ifdef DEBUG
       Clock::time_point start;
 #endif
       switch (op) {
-      case 0:
+      case 0: {
 #ifdef DEBUG
         start = Clock::now();
 #endif
+        uint8_t A = (bits >> 6) & 7;
+        uint8_t B = (bits >> 3) & 7;
+        uint8_t C = bits & 7;
         // The register A receives the value in register B, unless the register
         // C contains 0.
-        if (registers[C] != 0) {
-          registers[A] = registers[B];
-        }
+        // if (registers[C] != 0 & A != B) {
+        registers[C] ? registers[A] = registers[B] : registers[A];
+        //}
 #ifdef DEBUG
-        opCounts[op]++;
         opTimes[op] += Clock::now() - start;
+        opCounts[op]++;
 #endif
         break;
-      case 1:
+      }
+      case 1: {
 #ifdef DEBUG
         start = Clock::now();
 #endif
+        uint8_t A = (bits >> 6) & 7;
+        uint8_t B = (bits >> 3) & 7;
+        uint8_t C = bits & 7;
         // The register A receives the value stored at offset in register C in
         // the array identified by B.
         registers[A] = arrays[registers[B]][registers[C]];
 #ifdef DEBUG
-        opCounts[op]++;
         opTimes[op] += Clock::now() - start;
+        opCounts[op]++;
 #endif
         break;
-      case 2:
+      }
+      case 2: {
 #ifdef DEBUG
         start = Clock::now();
 #endif
+        uint8_t A = (bits >> 6) & 7;
+        uint8_t B = (bits >> 3) & 7;
+        uint8_t C = bits & 7;
         // The array identified by A is updated at the offset in register B to
         // store the value in register C.
         arrays[registers[A]][registers[B]] = registers[C];
 #ifdef DEBUG
-        opCounts[op]++;
         opTimes[op] += Clock::now() - start;
+        opCounts[op]++;
 #endif
         break;
-      case 3:
+      }
+      case 3: {
 #ifdef DEBUG
         start = Clock::now();
 #endif
+        uint8_t A = (bits >> 6) & 7;
+        uint8_t B = (bits >> 3) & 7;
+        uint8_t C = bits & 7;
         // The register A receives the value in register B plus the value in
         // register C, modulo 2^32.
         registers[A] = registers[B] + registers[C];
 #ifdef DEBUG
-        opCounts[op]++;
         opTimes[op] += Clock::now() - start;
+        opCounts[op]++;
 #endif
         break;
-
-      case 4:
+      }
+      case 4: {
 #ifdef DEBUG
         start = Clock::now();
 #endif
+        uint8_t A = (bits >> 6) & 7;
+        uint8_t B = (bits >> 3) & 7;
+        uint8_t C = bits & 7;
         // The register A receives the value in register B times the value in
         // register C, modulo 2^32
         registers[A] = registers[B] * registers[C];
 #ifdef DEBUG
-        opCounts[op]++;
         opTimes[op] += Clock::now() - start;
+        opCounts[op]++;
 #endif
         break;
-      case 5:
+      }
+      case 5: {
 #ifdef DEBUG
         start = Clock::now();
 #endif
+        uint8_t A = (bits >> 6) & 7;
+        uint8_t B = (bits >> 3) & 7;
+        uint8_t C = bits & 7;
         // The register A receives the value in register B divided by the value
         // in register C, if any, where each quantity is treated as an unsigned
         // 32-bit number.
@@ -151,24 +164,29 @@ int main(int argc, char *argv[]) {
         // If the program attempts to divide by 0, then the machine will Fail.
         registers[A] = registers[B] / registers[C];
 #ifdef DEBUG
-        opCounts[op]++;
         opTimes[op] += Clock::now() - start;
+        opCounts[op]++;
 #endif
         break;
-      case 6:
+      }
+      case 6: {
 #ifdef DEBUG
         start = Clock::now();
 #endif
+        uint8_t A = (bits >> 6) & 7;
+        uint8_t B = (bits >> 3) & 7;
+        uint8_t C = bits & 7;
         // Each bit in the register A receives the 1 bit if either register B or
         // register C has a 0 bit in that position. Otherwise the bit in
         // register A receives the 0 bit.
         registers[A] = ~(registers[B] & registers[C]);
 #ifdef DEBUG
-        opCounts[op]++;
         opTimes[op] += Clock::now() - start;
+        opCounts[op]++;
 #endif
         break;
-      case 7:
+      }
+      case 7: {
 #ifdef DEBUG
         // Print timing statistics
         cout << "\nTiming Statistics:\n";
@@ -179,70 +197,75 @@ int main(int argc, char *argv[]) {
                 chrono::duration_cast<Duration>(opTimes[i]).count() /
                 static_cast<double>(opCounts[i]);
             cout << "Opcode " << i << ": " << mean_ns << " ns (avg), "
-                 << opCounts[i] << " calls\n";
+                 << opCounts[i] << " calls,\t"
+                 << chrono::duration_cast<chrono::seconds>(opTimes[i]).count()
+                 << " s total\n";
           }
         }
 #endif
         // The machine stops computation.
         exit(0);
-      case 8:
+      }
+      case 8: {
 #ifdef DEBUG
         start = Clock::now();
 #endif
+        uint8_t B = (bits >> 3) & 7;
+        uint8_t C = bits & 7;
         // A new array is created; the value in the register C gives the number
         // of words in the new array. This new array is zero-initialized. A bit
         // pattern not consisting of exclusively the 0 bit, and that identifies
         // no other active allocated array, is placed in the B register, and it
         // identifies the new array.
-        if (numArrays < 0xFFFFFFFF) {
-          word idx = numArrays;
-          if (freeIdentifiers.begin() != freeIdentifiers.end()) {
-            idx = freeIdentifiers.back();
-            freeIdentifiers.pop_back();
-          }
-
+        if (freeIdentifiers.size()) {
+          word idx = freeIdentifiers.back();
+          freeIdentifiers.pop_back();
           arrays[idx] = vector<word>(registers[C], 0);
           registers[B] = idx;
-          ++numArrays;
         } else {
-          // ran out of arrays to allocate
-          exit(-1);
+          arrays.emplace_back(vector<word>(registers[C], 0));
+          registers[B] = arrays.size() - 1;
         }
 #ifdef DEBUG
-        opCounts[op]++;
         opTimes[op] += Clock::now() - start;
+        opCounts[op]++;
 #endif
         break;
-      case 9:
+      }
+      case 9: {
 #ifdef DEBUG
         start = Clock::now();
 #endif
+        uint8_t C = bits & 7;
         // The array identified by the register C is deallocated (freed).
         // Future allocations may then reuse that identifier.
 
         // Free memory in constant time
         // vector<word>().swap(arrays[registers[C]]); // Free memory
-        arrays.erase(registers[C]);
-        freeIdentifiers.push_back(registers[C]);
-        --numArrays;
+        // arrays.erase(registers[C]);
+        freeIdentifiers.emplace_back(registers[C]);
 #ifdef DEBUG
-        opCounts[op]++;
         opTimes[op] += Clock::now() - start;
+        opCounts[op]++;
 #endif
         break;
-      case 10:
+      }
+      case 10: {
 #ifdef DEBUG
         start = Clock::now();
 #endif
+        uint8_t C = bits & 7;
         //  The value in the register C is displayed on the console. Only values
         //  in the range 0–255 are allowed.
         cout << (char)registers[C];
 #ifdef DEBUG
-        opCounts[op]++;
         opTimes[op] += Clock::now() - start;
+        opCounts[op]++;
 #endif
         break;
-      case 11:
+      }
+      case 11: {
+        uint8_t C = bits & 7;
 #ifdef DEBUG
         start = Clock::now();
 #endif
@@ -258,14 +281,17 @@ int main(int argc, char *argv[]) {
           registers[C] = (word)input;
         }
 #ifdef DEBUG
-        opCounts[op]++;
         opTimes[op] += Clock::now() - start;
+        opCounts[op]++;
 #endif
         break;
-      case 12:
+      }
+      case 12: {
 #ifdef DEBUG
         start = Clock::now();
 #endif
+        uint8_t B = (bits >> 3) & 7;
+        uint8_t C = bits & 7;
         // The array identified by the B register is duplicated and the
         // duplicate replaces the ‘0’ array, regardless of size. The program
         // counter is updated to indicate the word of this array that is
@@ -275,26 +301,27 @@ int main(int argc, char *argv[]) {
           arrays[0] = arrays[registers[B]];
           size = arrays[0].size();
         }
-
         it = registers[C] - 1;
 #ifdef DEBUG
-        opCounts[op]++;
         opTimes[op] += Clock::now() - start;
+        opCounts[op]++;
 #endif
         break;
-      case 13:
+      }
+      case 13: {
 #ifdef DEBUG
         start = Clock::now();
 #endif
         // The value in bits 0:24 is loaded into the register A (given by bits
         // 25:27).
-        A = (bits & 0x0E000000) >> 25;
+        uint8_t A = (bits >> 25) & 7;
         registers[A] = bits & 0x01FFFFFF;
 #ifdef DEBUG
-        opCounts[op]++;
         opTimes[op] += Clock::now() - start;
+        opCounts[op]++;
 #endif
         break;
+      }
       default:
         // unrecognized opcode
         exit(-1);
