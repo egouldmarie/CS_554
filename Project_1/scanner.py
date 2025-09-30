@@ -13,22 +13,22 @@ class Token(NamedTuple):
 
 def tokenize(code):
     # Reserved Keywords
-    keywords = {"true", "false", "not", "skip", "if", "then", "else", "fi", "while", "do", "od"}
+    keywords = {"true", "false", "not", "skip", "if", "then", "else", "fi", "while", "do", "od", "and", "or"}
     # Regular Expressions identifying Tokens in our Language
     token_specification = [
-        ("RPAR",       r"\("),                            # Right paranthesis
-        ("LPAR",       r"\)"),                            # Left paranthesis
-        ("RBRAC",      r"\["),                            # Right bracket
-        ("LBRAC",      r"\]"),                            # Left bracket
-        ("INTEGER",    r"0|([1-9])\d*"),                  # Integer
-        ("VARIABLE",   r"[A-Za-z](\w|'|_)*"),             # Variables
-        ("ASSIGN",     r":="),                            # Assignment
-        ("SEQUENCING", r";"),                             # Command sequencing
-        ("OP_A",       r'[+\-*]'),                        # Arithmetic operators
-        ("OP_R",       r'=|<|<=|>=|>'),                   # Binary relational operators
-        ("NEWLINE",    r'\n'),                            # Line endings
-        ("IGNORE",     r"(--.*|\{-(.|\n|\r)*-\})|\s+"),   # ignore comments and white space
-        ("MISMATCH",   r'.'),                             # Any other character
+        ("lpar",       r"\("),                            # Right paranthesis
+        ("rpar",       r"\)"),                            # Left paranthesis
+        ("lbrac",      r"\["),                            # Right bracket
+        ("rbrac",      r"\]"),                            # Left bracket
+        ("int",          r"0|([1-9])\d*"),                  # Integer
+        ("var",          r"[A-Za-z](\w|'|_)*"),             # Variables
+        ("assign",     r":="),                            # Assignment
+        ("sequencing", r";"),                             # Command sequencing
+        ("op_a",       r'[+\-*]'),                        # Arithmetic operators
+        ("op_r",       r'=|<|<=|>=|>'),                   # Binary relational operators
+        ("newline",    r'\n'),                            # Line endings
+        ("ignore",     r"(--.*|\{-(.|\n|\r)*-\})|\s+"),   # ignore comments and white space
+        ("mismatch",   r'.'),                             # Any other character
     ]
     tok_regex = '|'.join('(?P<%s>%s)' % pair for pair in token_specification)
     line_num = 1
@@ -37,17 +37,17 @@ def tokenize(code):
         kind = mo.lastgroup
         value = mo.group()
         column = mo.start() - line_start
-        if kind == 'INTEGER':
+        if kind == 'int':
             value = int(value)
-        elif kind == 'VARIABLE' and value in keywords:
+        elif kind == 'var' and value in keywords:
             kind = value
-        elif kind == 'NEWLINE':
+        elif kind == 'newline':
             line_start = mo.end()
             line_num += 1
             continue
-        elif kind == 'IGNORE':
+        elif kind == 'ignore':
             continue
-        elif kind == 'MISMATCH':
+        elif kind == 'mismatch':
             raise RuntimeError(f'{value!r} unexpected on line {line_num}')
         yield Token(kind, value, line_num, column)
 
@@ -57,7 +57,13 @@ if __name__ == "__main__":
     text = file.read()
     file.close()
 
+    print("\nInput text:")
+    print("------------------------------------------------------------------------")
     print(text)
+    print("------------------------------------------------------------------------")
+    print("Generated tokens:\n")
 
     for token in tokenize(text):
         print(token)
+
+    print("\n")
