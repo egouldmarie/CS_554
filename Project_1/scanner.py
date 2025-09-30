@@ -20,8 +20,8 @@ def tokenize(code):
         ("rpar",       r"\)"),                            # Left paranthesis
         ("lbrac",      r"\["),                            # Right bracket
         ("rbrac",      r"\]"),                            # Left bracket
-        ("int",          r"0|([1-9])\d*"),                  # Integer
-        ("var",          r"[A-Za-z](\w|'|_)*"),             # Variables
+        ("int",        r"0|([1-9])\d*"),                  # Integer
+        ("var",        r"[A-Za-z](\w|'|_)*"),             # Variables
         ("assign",     r":="),                            # Assignment
         ("sequencing", r";"),                             # Command sequencing
         ("op_a",       r'[+\-*]'),                        # Arithmetic operators
