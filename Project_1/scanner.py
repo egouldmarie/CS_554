@@ -16,19 +16,19 @@ def tokenize(code):
     keywords = {"true", "false", "not", "skip", "if", "then", "else", "fi", "while", "do", "od"}
     # Regular Expressions identifying Tokens in our Language
     token_specification = [
-        ("(",          r"\("),                            # Right paranthesis
-        ("(",          r"\)"),                            # Left paranthesis
-        ("[",          r"\["),                            # Right bracket
-        ("]",          r"\]"),                            # Left bracket
-        ("n",          r"0|([1-9])\d*"),                  # Integer
-        ("x",          r"[A-Za-z](\w|'|_)*"),             # Variables
-        (":=",         r":="),                            # Assignment
-        (";",          r";"),                             # Command sequencing
-        ("op_a",       r'[+\-*]'),                        # Arithmetic operators
-        ("op_r",       r'=|<|<=|>=|>'),                   # Binary relational operators
+        ("RPAR",       r"\("),                            # Right paranthesis
+        ("LPAR",       r"\)"),                            # Left paranthesis
+        ("RBRAC",      r"\["),                            # Right bracket
+        ("LBRAC",      r"\]"),                            # Left bracket
+        ("INTEGER",    r"0|([1-9])\d*"),                  # Integer
+        ("VARIABLE",   r"[A-Za-z](\w|'|_)*"),             # Variables
+        ("ASSIGN",     r":="),                            # Assignment
+        ("SEQUENCING", r";"),                             # Command sequencing
+        ("OP_A",       r'[+\-*]'),                        # Arithmetic operators
+        ("OP_R",       r'=|<|<=|>=|>'),                   # Binary relational operators
         ("NEWLINE",    r'\n'),                            # Line endings
-        ("ignore",     r"(--.*|\{-(.|\n|\r)*-\})|\s+"),   # ignore comments and white space
-        ("mismatch",   r'.'),                             # Any other character
+        ("IGNORE",     r"(--.*|\{-(.|\n|\r)*-\})|\s+"),   # ignore comments and white space
+        ("MISMATCH",   r'.'),                             # Any other character
     ]
     tok_regex = '|'.join('(?P<%s>%s)' % pair for pair in token_specification)
     line_num = 1
