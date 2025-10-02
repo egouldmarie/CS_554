@@ -3,21 +3,37 @@ import time
 import sys
 import re
 
-# Adapted from the tokenization example in the python docs for regular expressions
+# Much of the scanner/tokenization code was adapted from the
+# tokenization example in the python docs for regular expressions:
 # https://docs.python.org/3/library/re.html#writing-a-tokenizer
+
 class Token(NamedTuple):
+    '''
+    Token(type, value, line, column) represents a token generated in
+    in the process of scanning the text of a program file, specifying
+    the type (such as an operation, parenthesis, etc), its value (for
+    example, the actual string or integer value), and its location
+    (line and column number). 
+    '''
     type: str
     value: str
     line: int
     column: int
 
 def tokenize(code):
+    '''
+    tokenize(code) uses regular expressions to categorize elements
+    of supplied code text and yield associated Tokens consisting of
+    ordered tuples specifying the type, value, and location of the
+    tokenized elements.
+    '''
     # Reserved Keywords
-    keywords = {"true", "false", "not", "skip", "if", "then", "else", "fi", "while", "do", "od", "and", "or"}
+    keywords = {"true", "false", "not", "skip", "if", "then", "else",
+                "fi", "while", "do", "od", "and", "or"}
     # Regular Expressions identifying Tokens in our Language
     token_specification = [
-        ("lpar",       r"\("),                            # Right paranthesis
-        ("rpar",       r"\)"),                            # Left paranthesis
+        ("lpar",       r"\("),                            # Right parenthesis
+        ("rpar",       r"\)"),                            # Left parenthesis
         ("lbrac",      r"\["),                            # Right bracket
         ("rbrac",      r"\]"),                            # Left bracket
         ("int",        r"0|([1-9])\d*"),                  # Integer
@@ -30,6 +46,7 @@ def tokenize(code):
         ("ignore",     r"(--.*|\{-(.|\n|\r)*-\})|\s+"),   # ignore comments and white space
         ("mismatch",   r'.'),                             # Any other character
     ]
+    # create the 'master' regex:
     tok_regex = '|'.join('(?P<%s>%s)' % pair for pair in token_specification)
     line_num = 1
     line_start = 0
@@ -52,15 +69,15 @@ def tokenize(code):
         yield Token(kind, value, line_num, column)
 
 if __name__ == "__main__":
+
     # read in file text
-    file = open(sys.argv[1], "r")
-    text = file.read()
-    file.close()
+    with open(sys.argv[1], 'r') as file:
+        text = file.read()
 
     print("\nInput text:")
-    print("------------------------------------------------------------------------")
+    print("-------------------------------------------------------------------")
     print(text)
-    print("------------------------------------------------------------------------")
+    print("-------------------------------------------------------------------")
     print("Generated tokens:\n")
 
     for token in tokenize(text):
