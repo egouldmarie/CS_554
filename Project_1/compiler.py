@@ -1,11 +1,12 @@
 import sys
 import time
-import parser
-import scanner
-import importlib
+#import importlib
 
-importlib.reload(scanner)
-importlib.reload(parser)
+from parser import Parser
+from scanner import Tokenize
+
+#importlib.reload(scanner)
+#importlib.reload(parser)
 
 if __name__ == "__main__":
     # read in file text
@@ -22,7 +23,7 @@ if __name__ == "__main__":
     print("\nGenerated tokens:")
     print("------------------------------------------------------------------------")
     tokens = []
-    for token in scanner.tokenize(whileCode):
+    for token in Tokenize(whileCode):
         print(token)
         tokens.append(token)
     
@@ -34,8 +35,8 @@ if __name__ == "__main__":
 
     #ast = parser.parseTokens(tokens)
 
-    prsr = parser.Parser(tokens)
-    parse_tree = prsr.parse()
+    parser = Parser(tokens)
+    parse_tree = parser.parse()
     print(f"parse_tree: {parse_tree}")
     print("------------------------------------------------------------------------")
     

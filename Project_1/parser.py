@@ -1,6 +1,3 @@
-import sys
-from scanner import tokenize
-
 # class TokenType:
 #     LPAR = "lpar"
 #     RPAR = "rpar"

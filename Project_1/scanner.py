@@ -18,7 +18,7 @@ class Token(NamedTuple):
     line: int
     column: int
 
-def tokenize(code):
+def Tokenize(code):
     '''
     tokenize(code) uses regular expressions to categorize elements
     of supplied code text and yield associated Tokens consisting of
