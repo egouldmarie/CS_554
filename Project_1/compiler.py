@@ -19,17 +19,24 @@ if __name__ == "__main__":
     print("------------------------------------------------------------------------")
 
     # ---text---> scanner --tokens-->
-    tokens = scanner.tokenize(whileCode)
-
-    #print("\nGenerated tokens:")
-    #print("------------------------------------------------------------------------")
-    #for token in tokens:
-    #    print(token)
-    #print("------------------------------------------------------------------------")
+    print("\nGenerated tokens:")
+    print("------------------------------------------------------------------------")
+    tokens = []
+    for token in scanner.tokenize(whileCode):
+        print(token)
+        tokens.append(token)
+    
+    print("------------------------------------------------------------------------")
 
     # --tokens--> parser ----ast---->
-    ast = parser.parseTokens(tokens)
+    print("\nAbstract Syntax Tree:")
+    print("------------------------------------------------------------------------")
 
-    #print("\nAbstract Syntax Tree:")
-    #print("------------------------------------------------------------------------")
-    #print("------------------------------------------------------------------------")
+    #ast = parser.parseTokens(tokens)
+
+    prsr = parser.Parser(tokens)
+    parse_tree = prsr.parse()
+    print(f"parse_tree: {parse_tree}")
+    print("------------------------------------------------------------------------")
+    
+    print("\n")

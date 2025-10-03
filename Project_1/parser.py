@@ -47,6 +47,7 @@ class Parser:
     '''
 
     def __init__(self, tokens):
+        self.stack = []
         self.tokens = tokens
         self.current_pos = 0
         self.current_token_index = 0
@@ -160,37 +161,6 @@ class Parser:
                     f"{self.tokens[self.current_token_index - 1]}."
             )
         return parse_tree
-
-
-if __name__ == "__main__":
-
-    print("-------------------------------------------------------------------")
-
-    # read in file text
-    with open(sys.argv[1], 'r') as file:
-        text = file.read()
-
-    print("\nInput text:")
-    print("-------------------------------------------------------------------")
-    print(text)
-    print("-------------------------------------------------------------------")
-    print("Generated tokens:\n")
-
-    tokens = []
-    for token in tokenize(text):
-        print(token)
-        tokens.append(token)
-    
-    print("-------------------------------------------------------------------")
-
-    parser = Parser(tokens)
-    parse_tree = parser.parse()
-    print(f"parse_tree: {parse_tree}")
-
-    print("-------------------------------------------------------------------")
-    
-    print("\n")
-
 
 ################################################################################
 # type flags
