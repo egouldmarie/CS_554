@@ -1,6 +1,4 @@
 from typing import NamedTuple
-import time
-import sys
 import re
 
 # Adapted from the tokenization example in the python docs for regular expressions
@@ -50,20 +48,3 @@ def tokenize(code):
         elif kind == 'mismatch':
             raise RuntimeError(f'{value!r} unexpected on line {line_num}')
         yield Token(kind, value, line_num, column)
-
-if __name__ == "__main__":
-    # read in file text
-    file = open(sys.argv[1], "r")
-    text = file.read()
-    file.close()
-
-    print("\nInput text:")
-    print("------------------------------------------------------------------------")
-    print(text)
-    print("------------------------------------------------------------------------")
-    print("Generated tokens:\n")
-
-    for token in tokenize(text):
-        print(token)
-
-    print("\n")
