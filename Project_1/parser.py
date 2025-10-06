@@ -1,17 +1,3 @@
-# class TokenType:
-#     LPAR = "lpar"
-#     RPAR = "rpar"
-#     LBRAC = "lbrac"
-#     RBRAC = "rbrac"
-#     INT   = "int"
-#     VAR   = "var"
-#     ASSIGN = "assign"
-#     SEQ    = "sequencing"
-#     OP_A   = "op_a"
-#     OP_R   = "op_r"
-#     NEWL   = "newline"
-#     IGN    = "ignore"
-#     MISM   = "mismatch"
 
 LPAR = "lpar"
 RPAR = "rpar"
@@ -39,11 +25,9 @@ class Parser:
     an abstract syntax tree, by consuming the tokens one by one and
     using recursive functions to match the tokens against grammar rules.
 
-    ! RIGHT NOW: JUST coding for parsing for simple math expressions
-    of the form x + 2 * y, etc. !
-
-    ! WORKING ON EXTENDING to handle a sequence (SEQ) of statements,
-    starting with simple assignment statements.
+    CURRENTLY: Parser can handle simple mathematical expressions
+    and a sequence of simple assignment statements.
+    Does NOT yet handle other statements/commands.
     '''
 
     def __init__(self, tokens):
@@ -103,14 +87,6 @@ class Parser:
                     == expected_type)
         return False
 
-    # def _eat(self, token_type):
-    #     if self.current_token and self.current_token.type == token_type:
-    #         self._advance()
-    #     else:
-    #         raise Exception(
-    #                 f"Expected token type {token_type} but got "
-    #                 f"{self.current_token.type if self.current_token else 'None'}")
-
     def factor(self):
         '''
         For a participant in a multiplication, such a participant being
@@ -123,9 +99,9 @@ class Parser:
             token = self.consume(VAR)
             return (VAR, token.value)
         elif self.peek(LPAR):
-            self.consume(LPAR)    # without using return token
+            self.consume(LPAR)    # without using returned token
             result = self.expr()  # recursively parse inner expr
-            self.consume(RPAR)
+            self.consume(RPAR)    # without using returned token
             return result
         else:
             raise SyntaxError(
@@ -147,11 +123,11 @@ class Parser:
 
     def expr(self):
         '''
-        For a sum or difference expression such as x + 2*y.
+        For a sum or difference expression such as x + 2 * y.
         '''
         result = self.term()
-        while (self.current_token and (self.current_token.value == '+'
-               or self.current_token.value == '-')):
+        while (self.current_token
+               and (self.current_token.value in ['+', '-'])):
             op_token = self.current_token
             if op_token.value == '+':
                 self.consume(OP_A)
@@ -171,17 +147,14 @@ class Parser:
         of tokens associated with a program consisting of a sequence
         of statements.
         '''
-        # print("Entering parse() method, with: ")
-        # print(f"    self.current_token = {self.current_token}")
-        # print(f"    self.current_token_index = {self.current_token_index}")
-        # print(f"    self.peek_ahead(ASSIGN) = {self.peek_ahead(ASSIGN)}")
         while self.current_token_index < len(self.tokens):
             self.program_ast.append(self.statement())
         return self.program_ast
 
         # ======================================================== #
-        # previous code below when dealing only with expressions
-        # see above dev for dealing with sequence of statements
+        # Previous code below when dealing only with expressions
+        # see above dev for dealing with sequence of statements.
+        # Leaving this here for a while for a reminder.
         # ======================================================== #
         # parse_tree = self.expr()
         # if self.current_token_index < len(self.tokens):
@@ -197,28 +170,23 @@ class Parser:
         Pursue different parsing method(s) based on current statement
         (or what the project details call a 'command').
         '''
-        # if self.error_count < 4:
-        #     self.error_count += 1
-        #     print(f"\nEntering statement() method with:")
-        #     print(f"    self.current_token.type = {self.current_token.type}")
-        #     print(f"    self.peek_ahead(ASSIGN) = {self.peek_ahead(ASSIGN)}")
-        # assignment
+        # assignment (e.g., x := 3 + 2 * y)
         if self.current_token.type == VAR and self.peek_ahead(ASSIGN):
             return self.parse_assignment_stmt()
 
     def parse_assignment_stmt(self):
         '''
-        For assignment statements of the form x := expr .
+        Parsing assignment statements of the form x := expr .
+        Method assumes caller has already verified that the statement
+        to be parsed is indeed an assignment statement.
         '''
-        # print("\nEntering parse_assignment_stmt().")
         var_token = self.consume(VAR)
-        # print(f"    consumed VAR token with value {var_token.value}")
         assign_token = self.consume(ASSIGN)
-        # print(f"    consumed ASSIGN token with value {assign_token.value}")
         right = self.expr()
-        # print("    finished self.expr()")
         result = (ASSIGN, (VAR, var_token.value), right)
         if self.peek(SEQ):
+            # we check b/c the last statement in a program might
+            # not end with a sequence (;) marker
             self.consume(SEQ)
         return result
 
