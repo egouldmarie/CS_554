@@ -1,6 +1,4 @@
 from typing import NamedTuple
-import time
-import sys
 import re
 
 # Much of the scanner/tokenization code was adapted from the
@@ -20,7 +18,7 @@ class Token(NamedTuple):
     line: int
     column: int
 
-def tokenize(code):
+def Tokenize(code):
     '''
     tokenize(code) uses regular expressions to categorize elements
     of supplied code text and yield associated Tokens consisting of
@@ -67,20 +65,3 @@ def tokenize(code):
         elif kind == 'mismatch':
             raise RuntimeError(f'{value!r} unexpected on line {line_num}')
         yield Token(kind, value, line_num, column)
-
-if __name__ == "__main__":
-
-    # read in file text
-    with open(sys.argv[1], 'r') as file:
-        text = file.read()
-
-    print("\nInput text:")
-    print("-------------------------------------------------------------------")
-    print(text)
-    print("-------------------------------------------------------------------")
-    print("Generated tokens:\n")
-
-    for token in tokenize(text):
-        print(token)
-
-    print("\n")

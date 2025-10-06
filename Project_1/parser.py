@@ -1,6 +1,3 @@
-import sys
-from scanner import tokenize
-
 # class TokenType:
 #     LPAR = "lpar"
 #     RPAR = "rpar"
@@ -50,6 +47,7 @@ class Parser:
     '''
 
     def __init__(self, tokens):
+        self.stack = []
         self.tokens = tokens
         self.current_pos = 0
         self.current_token_index = 0
@@ -65,7 +63,7 @@ class Parser:
             self.current_token = self.tokens[self.current_token_index]
         else:
             self.current_token = None
-    
+
     def consume(self, expected_type):
         '''
         If the current token (as found in self.current_token) matches
@@ -83,7 +81,7 @@ class Parser:
             raise SyntaxError(
                     f"In Parser.consume(), expected token type "
                     f"{expected_type} but got {token.type}.")
-    
+
     def peek(self, expected_type):
         '''
         Check the type of the current token without consuming it,
@@ -93,7 +91,7 @@ class Parser:
         if self.current_token_index < len(self.tokens):
             return self.current_token.type == expected_type
         return False
-    
+
     def peek_ahead(self, expected_type):
         '''
         Check the next token (i.e. the upcoming token after the current
@@ -193,7 +191,7 @@ class Parser:
         #             f"{self.tokens[self.current_token_index - 1]}."
         #     )
         # return parse_tree
-    
+
     def statement(self):
         '''
         Pursue different parsing method(s) based on current statement
@@ -207,7 +205,7 @@ class Parser:
         # assignment
         if self.current_token.type == VAR and self.peek_ahead(ASSIGN):
             return self.parse_assignment_stmt()
-    
+
     def parse_assignment_stmt(self):
         '''
         For assignment statements of the form x := expr .
@@ -224,10 +222,41 @@ class Parser:
             self.consume(SEQ)
         return result
 
+################################################################################
+# type flags
+l_types = {
+    "false":        "0",
+    "true":         "1",
+    "not":          "!",
+    "and":          "&",
+    "or":           "|",
+    "skip":         "%",
+    "if":           "<",
+    "then":         "?",
+    "else":         ":",
+    "fi":           ">",
+    "while":        "w",
+    "do":           "\\",
+    "od":           "/",
+    "int":          "n",
+    "var":          "x",
+    "op_a":         "^",
+    "op_r":         "r",
+    "assign":       "=",
+    "sequencing":   ";",
+    "lpar":         "(",
+    "rpar":         ")",
+    "lbrac":        "[",
+    "rbrac":        "]",
+}
 
-if __name__ == "__main__":
+class PDA:
+    def __init__(self, input):
+        self.input = input
 
-    print("-------------------------------------------------------------------")
+        self.states = []
+        self.stack = []
+        self.rules = []
 
     # read in file text
     with open(sys.argv[1], 'r') as file:
@@ -243,7 +272,7 @@ if __name__ == "__main__":
     for token in tokenize(text):
         print(token)
         tokens.append(token)
-    
+
     print("-------------------------------------------------------------------")
     print("Initializing Parser ...")
     parser = Parser(tokens)
@@ -252,5 +281,9 @@ if __name__ == "__main__":
     print(f"parse_tree: {parse_tree}")
 
     print("-------------------------------------------------------------------")
-    
+
     print("\n")
+def parseTokens(tokens):
+    input = " ".join([l_types[t.type] for t in tokens])
+    input = "'"+input+"'"
+    print(input)
