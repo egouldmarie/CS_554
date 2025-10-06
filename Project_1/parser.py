@@ -1,4 +1,8 @@
 
+# ================= #
+# Useful constants  #
+# ================= #
+
 LPAR   = "lpar"
 RPAR   = "rpar"
 LBRAC  = "lbrac"
@@ -20,6 +24,9 @@ IF     = "if"
 THEN   = "then"
 ELSE   = "else"
 FI     = "fi"
+WHILE  = "while"
+DO     = "do"
+OD     = "od"
 NOT    = "not"
 AND    = "and"
 OR     = "or"
@@ -34,11 +41,6 @@ class Parser:
     NamedTuple of the form (type, value, line, column) and returns ...
     an abstract syntax tree, by consuming the tokens one by one and
     using recursive functions to match the tokens against grammar rules.
-
-    CURRENTLY: Parser can handle simple mathematical and boolean
-    expressions, and a sequence of simple assignment statements
-    (including boolean assignments).
-    Does NOT yet handle other statements/commands.
     '''
 
     def __init__(self, tokens):
@@ -97,157 +99,8 @@ class Parser:
             return (self.tokens[self.current_token_index + 1].type
                     == expected_type)
         return False
-
-    def factor(self):
-        '''
-        For a participant in a multiplication, such a participant being
-        a number, a variable, or a parenthesized expression.
-        '''
-        if self.peek(INT):
-            token = self.consume(INT)
-            return (INT, int(token.value))
-        elif self.peek(VAR):
-            token = self.consume(VAR)
-            return (VAR, token.value)
-        elif self.peek(LPAR):
-            self.consume(LPAR)    # without using returned token
-            result = self.expr()  # recursively parse inner expr
-            self.consume(RPAR)    # without using returned token
-            return result
-        else:
-            raise SyntaxError(
-                    f"Unexpected token found in Parser.factor(): "
-                    f"{self.current_token.value}.")
-
-    def term(self):
-        '''
-        For a participant (term) in a sum or difference expression.
-        For example, in the expression 'x + 2 * y,'
-        the 'x' and the '2 * y' are both terms.
-        '''
-        result = self.factor()
-        while (self.current_token and self.current_token.value == '*'):
-            op_token = self.consume(OP_A)
-            right = self.factor()
-            result = (MULT, result, right)
-        return result
-
-    def expr(self):
-        '''
-        Handles either an arithmetic expression (e.g. x + 2 * y)
-        or a boolean expression (e.g. x >= y).
-        '''
-        # ditinguish boolean vs arithmetic expressions
-        if (self.current_token.type in [LBRAC, NOT, AND, OR]):
-        # if (self.peek(LBRAC) or self.peek(NOT) 
-        #     or self.peek_ahead(AND) or self.peek_ahead(OR)):
-            print(f"Found boolean expression beginning with: {self.current_token.value}")
-            result = self.bool_expr()
-        else:
-            result = self.arith_expr()
-        return result
     
-    def arith_expr(self):
-        '''
-        For a sum or difference expression such as x + 2 * y (which
-        then consists of arithmetic terms and factors).
-        '''
-        result = self.term()
-        while (self.current_token
-               and (self.current_token.value in ['+', '-'])):
-            op_token = self.current_token
-            if op_token.value == '+':
-                self.consume(OP_A)
-                right = self.term()
-                result = (ADD, result, right)
-            else:
-                # subtraction expression
-                self.consume(OP_A)
-                right = self.term()
-                result = (SUB, result, right)
-
-        return result
     
-    def bool_expr(self):
-        '''
-        Primarily for a boolean OR, which has the lowest precedence
-        in the precedence order [] > NOT > AND > OR.
-        b1 OR b2 is analogous to arithmetic expression;
-        b1 AND b2 is analogous to arithmetic term;
-        NOT[b], [b] are analogous to arithmetic factor.
-        '''
-        print(f"Entering bool_expr() with: ")
-        print(f"    current_token = {self.current_token}")
-        result = self.bool_term()
-        if (self.current_token
-               and (self.current_token.value == OR)):
-            self.consume(OR)
-            right = self.bool_term()
-            result = (OR, result, right)
-        print(f"About to exit bool_expr() with: ")
-        print(f"    result = {result}")
-        return result
-    
-    def bool_term(self):
-        '''
-        For a boolean AND, whose components then might themselves be
-        bool_expr, bool_term, or bool_factor.
-        '''
-        print(f"Entering bool_term() with: ")
-        print(f"    current_token = {self.current_token}")
-        result = self.bool_factor()
-        while (self.current_token and self.peek(AND)):
-            self.consume(AND)
-            right = self.bool_factor()
-            result = (AND, result, right)
-        print(f"About to exit bool_term() with: ")
-        print(f"    result = {result}")
-        return result
-    
-    def bool_factor(self):
-        '''
-        For parsing a boolean of the form [b] (i.e. a boolean in
-        square brackets) or a NOT[b]. Such a factor might be an
-        element of a bool_term (an AND) or a bool_expr (an OR), and
-        the b itself might then be a bool_expr, bool_term, or
-        bool_factor.
-        '''
-        print(f"Entering bool_factor() with: ")
-        print(f"    current_token = {self.current_token}")
-        # if self.peek(VAR):
-        #     # we might have something like x < y
-        #     token = self.consume(VAR)
-        #     return (VAR, token.value)
-        if self.peek(NOT):
-            self.consume(NOT)
-            self.consume(LBRAC)        # discard [
-            result = self.bool_expr()  # recursively parse inner expr
-            self.consume(RBRAC)        # discard ]
-            print(f"About to exit bool_factor() with: ")
-            print(f"    result = {result}")
-            return (NOT, result)
-        elif self.peek(LBRAC):
-            self.consume(LBRAC)        # discard [
-            result = self.bool_expr()  # recursively parse inner expr
-            self.consume(RBRAC)        # discard ]
-            print(f"About to exit bool_factor() with: ")
-            print(f"    result = {result}")
-            return result
-        elif self.peek(TRUE):
-            self.consume(TRUE)
-            return TRUE
-        elif self.peek(FALSE):
-            self.consume(FALSE)
-            return FALSE
-        else:
-            # we must have a relational expression such as x < y
-            left = self.arith_expr()
-            op = self.consume(OP_R).value
-            right = self.arith_expr()
-            result = (op, left, right)
-            print(f"About to exit bool_factor() with: ")
-            print(f"    result = {result}")
-            return result
 
     def parse(self):
         '''
@@ -261,20 +114,6 @@ class Parser:
                 self.program_ast.append(_stmt)
         return self.program_ast
 
-        # ======================================================== #
-        # Previous code below when dealing only with expressions
-        # see above dev for dealing with sequence of statements.
-        # Leaving this here for a while for a reminder.
-        # ======================================================== #
-        # parse_tree = self.expr()
-        # if self.current_token_index < len(self.tokens):
-        #     raise SyntaxError(
-        #             "Parsing interrupted; failed to parse all tokens. "
-        #             f"Last token parsed was: "
-        #             f"{self.tokens[self.current_token_index - 1]}."
-        #     )
-        # return parse_tree
-
     def statement(self):
         '''
         Pursue different parsing method(s) based on current statement
@@ -286,12 +125,15 @@ class Parser:
         
         # skip (e.g., if x > 0 then x := x + 1 else skip)
         if self.peek(SKIP):
-            print(f"FOUND a skip statement!")
             return self.parse_skip_stmt()
         
         # if-then-else
         if self.current_token.type == IF:
             return self.parse_if_stmt()
+        
+        # while-do
+        if self.peek(WHILE):
+            return self.parse_while_stmt()
 
     def parse_assignment_stmt(self):
         '''
@@ -321,7 +163,6 @@ class Parser:
         A skip statement does nothing and can generally be ignored
         or even eliminated from the parse tree.
         '''
-        print("Entering parse_skip_stmt() method. ")
         self.consume(SKIP)   # discard 'skip' token
         if self.peek(SEQ):
             # we check b/c the last statement in a program might
@@ -372,10 +213,186 @@ class Parser:
             # program or in a block
             self.consume(SEQ)
 
-        if len(else_block) != 0:
-            return (IF, true_block, else_block)
+        # note that it's theoretically possible that
+        # the true_block and/or while_block is empty
+        return (IF, condition, true_block, else_block)
+
+    def parse_while_stmt(self):
+        '''
+        Parsing of while loops like this:
+            while x > 0 do
+              x := x - 1;
+              y := y + 1
+            od
+        Method assumes caller has already verified that the statement
+        to be parsed is indeed an while-do statement.
+        '''
+
+        self.consume(WHILE)            # discard 'while'
+        condition = self.bool_expr()   # recursively parse bool cond
+        self.consume(DO)               # discard 'do'
+
+        while_block = []
+        while (self.current_token_index < len(self.tokens)
+               and self.current_token.type != OD):
+            _stmt = self.statement()
+            if (_stmt is not None):
+                while_block.append(_stmt)
+        self.consume(OD)               # discard 'od'
+
+        if self.peek(SEQ):
+            # while-do will typically end with ';' marker, but
+            # doesn't have to if it is the last statement in the
+            # program or in a block
+            self.consume(SEQ)
+
+        # note that it's theoretically possible that
+        # the while_block is empty
+        return (WHILE, condition, while_block)
+    
+    def expr(self):
+        '''
+        Handles either an arithmetic expression (e.g. x + 2 * y)
+        or a boolean expression (e.g. x >= y).
+        '''
+        # ditinguish boolean vs arithmetic expressions
+        if (self.current_token.type in [LBRAC, NOT, AND, OR]):
+        # if (self.peek(LBRAC) or self.peek(NOT) 
+        #     or self.peek_ahead(AND) or self.peek_ahead(OR)):
+            result = self.bool_expr()
         else:
-            return (IF, true_block)
+            result = self.arith_expr()
+        return result
+    
+    # ====================================== #
+    # arithmetic expressions and components  #
+    # SEE: arith_expr, term, factor          #
+    # ====================================== #
+    
+    def arith_expr(self):
+        '''
+        For a sum or difference expression such as x + 2 * y (which
+        then consists of arithmetic terms and factors).
+        '''
+        result = self.term()
+        while (self.current_token
+               and (self.current_token.value in ['+', '-'])):
+            op_token = self.current_token
+            if op_token.value == '+':
+                self.consume(OP_A)
+                right = self.term()
+                result = (ADD, result, right)
+            else:
+                # subtraction expression
+                self.consume(OP_A)
+                right = self.term()
+                result = (SUB, result, right)
+
+        return result
+    
+    def term(self):
+        '''
+        For a participant (term) in a sum or difference expression.
+        For example, in the expression 'x + 2 * y,'
+        the 'x' and the '2 * y' are both terms.
+        '''
+        result = self.factor()
+        while (self.current_token and self.current_token.value == '*'):
+            op_token = self.consume(OP_A)
+            right = self.factor()
+            result = (MULT, result, right)
+        return result
+    
+    def factor(self):
+        '''
+        For a participant in a multiplication, such a participant being
+        a number, a variable, or a parenthesized expression.
+        '''
+        if self.peek(INT):
+            token = self.consume(INT)
+            return (INT, int(token.value))
+        elif self.peek(VAR):
+            token = self.consume(VAR)
+            return (VAR, token.value)
+        elif self.peek(LPAR):
+            self.consume(LPAR)    # without using returned token
+            result = self.expr()  # recursively parse inner expr
+            self.consume(RPAR)    # without using returned token
+            return result
+        else:
+            raise SyntaxError(
+                    f"Unexpected token found in Parser.factor(): "
+                    f"{self.current_token.value}.")
+    
+    # ====================================== #
+    # boolean expressions and components     #
+    # SEE: bool_expr, bool_term, bool_factor #
+    # ====================================== #
+    
+    def bool_expr(self):
+        '''
+        Primarily for a boolean OR, which has the lowest precedence
+        in the precedence order [] > NOT > AND > OR.
+        b1 OR b2 is analogous to arithmetic expression;
+        b1 AND b2 is analogous to arithmetic term;
+        NOT[b], [b] are analogous to arithmetic factor.
+        '''
+        result = self.bool_term()
+        if (self.current_token
+               and (self.current_token.value == OR)):
+            self.consume(OR)
+            right = self.bool_term()
+            result = (OR, result, right)
+        return result
+    
+    def bool_term(self):
+        '''
+        For a boolean AND, whose components then might themselves be
+        bool_expr, bool_term, or bool_factor.
+        '''
+        result = self.bool_factor()
+        while (self.current_token and self.peek(AND)):
+            self.consume(AND)
+            right = self.bool_factor()
+            result = (AND, result, right)
+        return result
+    
+    def bool_factor(self):
+        '''
+        For parsing a boolean of the form [b] (i.e. a boolean in
+        square brackets) or a NOT[b]. Such a factor might be an
+        element of a bool_term (an AND) or a bool_expr (an OR), and
+        the b itself might then be a bool_expr, bool_term, or
+        bool_factor.
+        '''
+        # if self.peek(VAR):
+        #     # we might have something like x < y
+        #     token = self.consume(VAR)
+        #     return (VAR, token.value)
+        if self.peek(NOT):
+            self.consume(NOT)
+            self.consume(LBRAC)        # discard [
+            result = self.bool_expr()  # recursively parse inner expr
+            self.consume(RBRAC)        # discard ]
+            return (NOT, result)
+        elif self.peek(LBRAC):
+            self.consume(LBRAC)        # discard [
+            result = self.bool_expr()  # recursively parse inner expr
+            self.consume(RBRAC)        # discard ]
+            return result
+        elif self.peek(TRUE):
+            self.consume(TRUE)
+            return TRUE
+        elif self.peek(FALSE):
+            self.consume(FALSE)
+            return FALSE
+        else:
+            # we must have a relational expression such as x < y
+            left = self.arith_expr()
+            op = self.consume(OP_R).value
+            right = self.arith_expr()
+            result = (op, left, right)
+            return result
 
 ################################################################################
 # type flags
