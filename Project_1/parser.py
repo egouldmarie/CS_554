@@ -1,10 +1,10 @@
 
-LPAR = "lpar"
-RPAR = "rpar"
-LBRAC = "lbrac"
-RBRAC = "rbrac"
-INT   = "int"
-VAR   = "var"
+LPAR   = "lpar"
+RPAR   = "rpar"
+LBRAC  = "lbrac"
+RBRAC  = "rbrac"
+INT    = "int"
+VAR    = "var"
 ASSIGN = "assign"
 SEQ    = "sequencing"
 OP_A   = "op_a"
@@ -15,6 +15,12 @@ MISM   = "mismatch"
 MULT   = "mult"
 ADD    = "add"
 SUB    = "sub"
+IF     = "if"
+NOT    = "not"
+AND    = "and"
+OR     = "or"
+TRUE   = "true"
+FALSE  = "false"
 
 class Parser:
     '''
@@ -25,8 +31,9 @@ class Parser:
     an abstract syntax tree, by consuming the tokens one by one and
     using recursive functions to match the tokens against grammar rules.
 
-    CURRENTLY: Parser can handle simple mathematical expressions
-    and a sequence of simple assignment statements.
+    CURRENTLY: Parser can handle simple mathematical and boolean
+    expressions, and a sequence of simple assignment statements
+    (including boolean assignments).
     Does NOT yet handle other statements/commands.
     '''
 
@@ -123,7 +130,38 @@ class Parser:
 
     def expr(self):
         '''
-        For a sum or difference expression such as x + 2 * y.
+        Handles either an arithmetic expression (e.g. x + 2 * y)
+        or a boolean expression (e.g. x >= y).
+        '''
+        # ditinguish boolean vs arithmetic expressions
+        if (self.peek(LBRAC) or self.peek(NOT) 
+            or self.peek_ahead(AND) or self.peek_ahead(OR)):
+            print(f"Found boolean expression beginning with: {self.current_token.value}")
+            result = self.bool_expr()
+        else:
+            result = self.arith_expr()
+        return result
+
+        # result = self.term()
+        # while (self.current_token
+        #        and (self.current_token.value in ['+', '-'])):
+        #     op_token = self.current_token
+        #     if op_token.value == '+':
+        #         self.consume(OP_A)
+        #         right = self.term()
+        #         result = (ADD, result, right)
+        #     else:
+        #         # subtraction expression
+        #         self.consume(OP_A)
+        #         right = self.term()
+        #         result = (SUB, result, right)
+
+        # return result
+    
+    def arith_expr(self):
+        '''
+        For a sum or difference expression such as x + 2 * y (which
+        then consists of arithmetic terms and factors).
         '''
         result = self.term()
         while (self.current_token
@@ -140,6 +178,87 @@ class Parser:
                 result = (SUB, result, right)
 
         return result
+    
+    def bool_expr(self):
+        '''
+        Primarily for a boolean OR, which has the lowest precedence
+        in the precedence order [] > NOT > AND > OR.
+        b1 OR b2 is analogous to arithmetic expression;
+        b1 AND b2 is analogous to arithmetic term;
+        NOT[b], [b] are analogous to arithmetic factor.
+        '''
+        print(f"Entering bool_expr() with: ")
+        print(f"    current_token = {self.current_token}")
+        result = self.bool_term()
+        if (self.current_token
+               and (self.current_token.value == OR)):
+            self.consume(OR)
+            right = self.bool_term()
+            result = (OR, result, right)
+        print(f"About to exit bool_expr() with: ")
+        print(f"    result = {result}")
+        return result
+    
+    def bool_term(self):
+        '''
+        For a boolean AND, whose components then might themselves be
+        bool_expr, bool_term, or bool_factor.
+        '''
+        print(f"Entering bool_term() with: ")
+        print(f"    current_token = {self.current_token}")
+        result = self.bool_factor()
+        while (self.current_token and self.peek(AND)):
+            self.consume(AND)
+            right = self.bool_factor()
+            result = (AND, result, right)
+        print(f"About to exit bool_term() with: ")
+        print(f"    result = {result}")
+        return result
+    
+    def bool_factor(self):
+        '''
+        For parsing a boolean of the form [b] (i.e. a boolean in
+        square brackets) or a NOT[b]. Such a factor might be an
+        element of a bool_term (an AND) or a bool_expr (an OR), and
+        the b itself might then be a bool_expr, bool_term, or
+        bool_factor.
+        '''
+        print(f"Entering bool_factor() with: ")
+        print(f"    current_token = {self.current_token}")
+        # if self.peek(VAR):
+        #     # we might have something like x < y
+        #     token = self.consume(VAR)
+        #     return (VAR, token.value)
+        if self.peek(NOT):
+            self.consume(NOT)
+            self.consume(LBRAC)        # discard [
+            result = self.bool_expr()  # recursively parse inner expr
+            self.consume(RBRAC)        # discard ]
+            print(f"About to exit bool_factor() with: ")
+            print(f"    result = {result}")
+            return (NOT, result)
+        elif self.peek(LBRAC):
+            self.consume(LBRAC)        # discard [
+            result = self.bool_expr()  # recursively parse inner expr
+            self.consume(RBRAC)        # discard ]
+            print(f"About to exit bool_factor() with: ")
+            print(f"    result = {result}")
+            return result
+        elif self.peek(TRUE):
+            self.consume(TRUE)
+            return TRUE
+        elif self.peek(FALSE):
+            self.consume(FALSE)
+            return FALSE
+        else:
+            # we must have a relational expression such as x < y
+            left = self.arith_expr()
+            op = self.consume(OP_R).value
+            right = self.arith_expr()
+            result = (op, left, right)
+            print(f"About to exit bool_factor() with: ")
+            print(f"    result = {result}")
+            return result
 
     def parse(self):
         '''
@@ -173,6 +292,10 @@ class Parser:
         # assignment (e.g., x := 3 + 2 * y)
         if self.current_token.type == VAR and self.peek_ahead(ASSIGN):
             return self.parse_assignment_stmt()
+        
+        # if-then-else
+        # if self.current_token.type == IF:
+        #     return self.parse_if_stmt()
 
     def parse_assignment_stmt(self):
         '''
@@ -189,6 +312,22 @@ class Parser:
             # not end with a sequence (;) marker
             self.consume(SEQ)
         return result
+    
+    # def parse_if_stmt(self):
+    #     '''
+    #     Parsing if-then-else statements like this:
+    #         if x > 0 then
+    #           x = x + 1
+    #         else
+    #           x = 0
+    #         fi
+    #     where the 'else' block could be a simple 'skip' command.
+    #     Method assumes caller has already verified that the statement
+    #     to be parsed is indeed an if-then-else statement.
+    #     '''
+    #     # place-holder code
+    #     self.consume(IF)
+    #     condition = self.consume()
 
 ################################################################################
 # type flags
