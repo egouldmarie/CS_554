@@ -6,6 +6,7 @@ RBRAC  = "rbrac"
 INT    = "int"
 VAR    = "var"
 ASSIGN = "assign"
+SKIP   = "skip"
 SEQ    = "sequencing"
 OP_A   = "op_a"
 OP_R   = "op_r"
@@ -16,6 +17,9 @@ MULT   = "mult"
 ADD    = "add"
 SUB    = "sub"
 IF     = "if"
+THEN   = "then"
+ELSE   = "else"
+FI     = "fi"
 NOT    = "not"
 AND    = "and"
 OR     = "or"
@@ -134,29 +138,14 @@ class Parser:
         or a boolean expression (e.g. x >= y).
         '''
         # ditinguish boolean vs arithmetic expressions
-        if (self.peek(LBRAC) or self.peek(NOT) 
-            or self.peek_ahead(AND) or self.peek_ahead(OR)):
+        if (self.current_token.type in [LBRAC, NOT, AND, OR]):
+        # if (self.peek(LBRAC) or self.peek(NOT) 
+        #     or self.peek_ahead(AND) or self.peek_ahead(OR)):
             print(f"Found boolean expression beginning with: {self.current_token.value}")
             result = self.bool_expr()
         else:
             result = self.arith_expr()
         return result
-
-        # result = self.term()
-        # while (self.current_token
-        #        and (self.current_token.value in ['+', '-'])):
-        #     op_token = self.current_token
-        #     if op_token.value == '+':
-        #         self.consume(OP_A)
-        #         right = self.term()
-        #         result = (ADD, result, right)
-        #     else:
-        #         # subtraction expression
-        #         self.consume(OP_A)
-        #         right = self.term()
-        #         result = (SUB, result, right)
-
-        # return result
     
     def arith_expr(self):
         '''
@@ -267,7 +256,9 @@ class Parser:
         of statements.
         '''
         while self.current_token_index < len(self.tokens):
-            self.program_ast.append(self.statement())
+            _stmt = self.statement()
+            if _stmt is not None:
+                self.program_ast.append(_stmt)
         return self.program_ast
 
         # ======================================================== #
@@ -293,9 +284,14 @@ class Parser:
         if self.current_token.type == VAR and self.peek_ahead(ASSIGN):
             return self.parse_assignment_stmt()
         
+        # skip (e.g., if x > 0 then x := x + 1 else skip)
+        if self.peek(SKIP):
+            print(f"FOUND a skip statement!")
+            return self.parse_skip_stmt()
+        
         # if-then-else
-        # if self.current_token.type == IF:
-        #     return self.parse_if_stmt()
+        if self.current_token.type == IF:
+            return self.parse_if_stmt()
 
     def parse_assignment_stmt(self):
         '''
@@ -313,21 +309,73 @@ class Parser:
             self.consume(SEQ)
         return result
     
-    # def parse_if_stmt(self):
-    #     '''
-    #     Parsing if-then-else statements like this:
-    #         if x > 0 then
-    #           x = x + 1
-    #         else
-    #           x = 0
-    #         fi
-    #     where the 'else' block could be a simple 'skip' command.
-    #     Method assumes caller has already verified that the statement
-    #     to be parsed is indeed an if-then-else statement.
-    #     '''
-    #     # place-holder code
-    #     self.consume(IF)
-    #     condition = self.consume()
+    def parse_skip_stmt(self):
+        '''
+        Parsing of 'skip' statements, which might appear (e.g.) in
+        the else block of an IF statement like this:
+            if x > 0 then
+              x := x + 1
+            else
+              skip
+            fi;
+        A skip statement does nothing and can generally be ignored
+        or even eliminated from the parse tree.
+        '''
+        print("Entering parse_skip_stmt() method. ")
+        self.consume(SKIP)   # discard 'skip' token
+        if self.peek(SEQ):
+            # we check b/c the last statement in a program might
+            # not end with a sequence (;) marker
+            self.consume(SEQ)
+
+        # we could choose something else here;
+        # None will prompt a statement accumulator to ignore.
+        return None
+    
+    def parse_if_stmt(self):
+        '''
+        Parsing of if-then-else statements like this:
+            if x > 0 then
+              x := x + 1;
+              y := true
+            else
+              x := 0
+            fi
+        where the 'else' block could be a simple 'skip' command.
+        Method assumes caller has already verified that the statement
+        to be parsed is indeed an if-then-else statement.
+        '''
+
+        self.consume(IF)               # discard 'if'
+        condition = self.bool_expr()   # recursively parse bool cond
+        self.consume(THEN)             # discard 'then'
+
+        true_block = []
+        while (self.current_token_index < len(self.tokens)
+               and self.current_token.type != ELSE):
+            _stmt = self.statement()
+            if (_stmt is not None):
+                true_block.append(_stmt)
+        self.consume(ELSE)             # discard 'else'
+
+        else_block = []
+        while (self.current_token_index < len(self.tokens)
+               and self.current_token.type != FI):
+            _stmt = self.statement()
+            if (_stmt is not None):
+                else_block.append(_stmt)
+        self.consume(FI)               # discard 'fi'
+
+        if self.peek(SEQ):
+            # if-then-else will typically end with ';' marker, but
+            # doesn't have to if it is the last statement in the
+            # program or in a block
+            self.consume(SEQ)
+
+        if len(else_block) != 0:
+            return (IF, true_block, else_block)
+        else:
+            return (IF, true_block)
 
 ################################################################################
 # type flags
