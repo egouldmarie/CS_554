@@ -258,31 +258,6 @@ class PDA:
         self.stack = []
         self.rules = []
 
-    # read in file text
-    with open(sys.argv[1], 'r') as file:
-        text = file.read()
-
-    print("\nInput text:")
-    print("-------------------------------------------------------------------")
-    print(text)
-    print("-------------------------------------------------------------------")
-    print("Generated tokens:\n")
-
-    tokens = []
-    for token in tokenize(text):
-        print(token)
-        tokens.append(token)
-
-    print("-------------------------------------------------------------------")
-    print("Initializing Parser ...")
-    parser = Parser(tokens)
-    print("Starting Parser .......")
-    parse_tree = parser.parse()
-    print(f"parse_tree: {parse_tree}")
-
-    print("-------------------------------------------------------------------")
-
-    print("\n")
 def parseTokens(tokens):
     input = " ".join([l_types[t.type] for t in tokens])
     input = "'"+input+"'"
