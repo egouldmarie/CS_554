@@ -30,11 +30,11 @@ if __name__ == "__main__":
     print("\nAbstract Syntax Tree:")
     print("------------------------------------------------------------------------")
 
-    ast = parseTokens(tokens)
+    #ast = parseTokens(tokens)
 
-    #parser = Parser(tokens)
-    #parse_tree = parser.parse()
-    #print(f"parse_tree: {parse_tree}")
+    parser = Parser(tokens)
+    parse_tree = parser.parse()
+    print(f"parse_tree: {parse_tree}")
     print("------------------------------------------------------------------------")
     
     print("\n")
