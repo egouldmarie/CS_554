@@ -62,6 +62,7 @@ NOPOP = "_"
 A = 'a'
 B = 'b'
 C = 'c'
+EVAL = 'Eval'
 DONE = 'Done'
 ERROR = 'Error'
 
@@ -69,7 +70,7 @@ class PDA:
     def __init__(self, tokens):
         self.tokens = tokens
         self.stack = [C]
-        self.current_state = C
+        self.current_state = EVAL
         self.count = 1
 
     def getNext(self):
@@ -90,19 +91,45 @@ class PDA:
         self.count = self.count+1
 
         match self.current_state:
-            case 'c':
+            case 'Eval':
                 match input:
-                    # stay in state C
+                    # evaluating command c
                     case 'var':
-                        if (self.stack and self.stack.pop()) == C:
+                        pop = (self.stack and self.stack.pop())
+                        if pop == C:
                             self.stack.append(ASSIGN)
-                        else:
+                        elif pop == B:
+                            self.stack.append(OP_R)
+                        elif pop != A:
+                            self.current_state = ERROR
+                    case 'int':
+                        pop = (self.stack and self.stack.pop())
+                        if pop == B:
+                            self.stack.append(OP_R)
+                        elif pop != A:
                             self.current_state = ERROR
                     case 'skip':
                         if (self.stack and self.stack.pop()) != C:
                             self.current_state = ERROR
                     case 'sequencing':
                         self.stack.append(C)
+                    case 'assign':
+                        if (self.stack and self.stack.pop()) == ASSIGN:
+                            self.stack.append(A)
+                        else:
+                            self.current_state = ERROR
+                    case 'if':
+                        if (self.stack and self.stack.pop()) == C:
+                            self.stack.append(IF)
+                            self.stack.append(B)
+                        else:
+                            self.current_state = ERROR
+                    case 'then':
+                        if (self.stack and self.stack.pop()) == IF:
+                            self.stack.append(THEN)
+                            self.stack.append(C)
+                        else:
+                            self.current_state = ERROR
                     case 'else':
                         if (self.stack and self.stack.pop()) == THEN:
                             self.stack.append(ELSE)
@@ -112,42 +139,21 @@ class PDA:
                     case 'fi':
                         if (self.stack and self.stack.pop()) != ELSE:
                             self.current_state = ERROR
-                    case 'od':
-                        if (self.stack and self.stack.pop()) != DO:
-                            self.current_state = ERROR
-                    # go to state A
-                    case 'assign':
-                        if (self.stack and self.stack.pop()) == ASSIGN:
-                            self.stack.append(A)
-                            self.current_state = A
-                        else:
-                            self.current_state = ERROR
-                    # go to state B
-                    case 'if':
-                        if (self.stack and self.stack.pop()) == C:
-                            self.stack.append(IF)
-                            self.stack.append(B)
-                            self.current_state = B
-                        else:
-                            self.current_state = ERROR
                     case 'while':
                         if (self.stack and self.stack.pop()) == C:
                             self.stack.append(WHILE)
                             self.stack.append(B)
-                            self.current_state = B
                         else:
                             self.current_state = ERROR
-                    # go to DONE state
-                    case -1:
-                        if (self.stack and self.stack.pop()):
-                            self.current_state = ERROR
+                    case 'do':
+                        if (self.stack and self.stack.pop()) == WHILE:
+                            self.stack.append(DO)
+                            self.stack.append(C)
                         else:
-                            self.current_state = DONE
-                    case _:
-                        self.current_state = ERROR
-            case 'b':
-                match input:
-                    # stay in state B
+                            self.current_state = ERROR
+                    case 'od':
+                        if (self.stack and self.stack.pop()) != DO:
+                            self.current_state = ERROR
                     case 'true':
                         if (self.stack and self.stack.pop()) != B:
                             self.current_state = ERROR
@@ -173,106 +179,34 @@ class PDA:
                     case 'rbrac':
                         if (self.stack and self.stack.pop()) != LBRAC:
                             self.current_state = ERROR
-                    # go to state A
-                    case 'var':
-                        if (self.stack and self.stack.pop()) == B:
-                            self.stack.append(OP_R)
-                            self.current_state = A
-                        else:
-                            self.current_state = ERROR
-                    case 'int':
-                        if (self.stack and self.stack.pop()) == B:
-                            self.stack.append(OP_R)
-                            self.current_state = A
-                        else:
-                            self.current_state = ERROR
                     case 'lpar':
-                        if (self.stack and self.stack.pop()) == B:
+                        pop = (self.stack and self.stack.pop())
+                        if pop == B:
                             self.stack.append(OP_R)
                             self.stack.append(LPAR)
                             self.stack.append(A)
-                            self.current_state = A
-                        else:
-                            self.current_state = ERROR
-                    # go to state C
-                    case _:
-                        self.current_state = ERROR
-            case 'a':
-                match input:
-                    # stay in state A
-                    case 'var':
-                        if (self.stack and self.stack.pop()) != A:
-                            self.current_state = ERROR
-                    case 'int':
-                        if (self.stack and self.stack.pop()) != A:
-                            self.current_state = ERROR
-                    case 'op_a':
-                        self.stack.append(A)
-                    case 'lpar':
-                        if (self.stack and self.stack.pop()) == A:
+                        elif pop == A:
                             self.stack.append(LPAR)
-                            self.stack.append(A)
-                        else:
-                            self.current_state = ERROR
-                    case 'op_r':
-                        if (self.stack and self.stack.pop()) == OP_R:
                             self.stack.append(A)
                         else:
                             self.current_state = ERROR
                     case 'rpar':
                         if (self.stack and self.stack.pop()) != LPAR:
                             self.current_state = ERROR
-                    # go to state B
-                    case 'rbrac':
-                        if (self.stack and self.stack.pop()) == LBRAC:
-                            self.current_state = B
+                    case 'op_a':
+                        self.stack.append(A)
+                    case 'op_r':
+                        if (self.stack and self.stack.pop()) == OP_R:
+                            self.stack.append(A)
                         else:
                             self.current_state = ERROR
-                    case 'and':
-                        self.stack.append(B)
-                        self.current_state = B
-                    case 'or':
-                        self.stack.append(B)
-                        self.current_state = B
-                    # go to state C
-                    case 'sequencing':
-                        self.stack.append(C)
-                        self.current_state = C
-                    case 'then':
-                        if (self.stack and self.stack.pop()) == IF:
-                            self.stack.append(THEN)
-                            self.stack.append(C)
-                            self.current_state = C
-                        else:
-                            self.current_state = ERROR
-                    case 'else':
-                        if (self.stack and self.stack.pop()) == THEN:
-                            self.stack.append(ELSE)
-                            self.stack.append(C)
-                            self.current_state = C
-                        else:
-                            self.current_state = ERROR
-                    case 'fi':
-                        if (self.stack and self.stack.pop()) == ELSE:
-                            self.current_state = C
-                        else:
-                            self.current_state = ERROR
-                    case 'do':
-                        if (self.stack and self.stack.pop()) == WHILE:
-                            self.stack.append(DO)
-                            self.stack.append(C)
-                            self.current_state = C
-                        else:
-                            self.current_state = ERROR
-                    case 'od':
-                        if (self.stack and self.stack.pop()) == DO:
-                            self.current_state = C
                     # go to DONE state
                     case -1:
                         if (self.stack and self.stack.pop()):
                             self.current_state = ERROR
                         else:
                             self.current_state = DONE
+                    # otherwise go to ERROR state
                     case _:
                         self.current_state = ERROR
             case 'Done':
