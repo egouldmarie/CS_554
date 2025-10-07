@@ -1,9 +1,10 @@
 import sys
 import time
 
-from pda import parseTokens
+# from pda import parseTokens
 from parser import Parser
 from scanner import Tokenize
+from dot_graphiic import generate_dot_from_tree
 
 if __name__ == "__main__":
     # read in file text
@@ -37,4 +38,6 @@ if __name__ == "__main__":
     print(f"parse_tree: {parse_tree}")
     print("------------------------------------------------------------------------")
     
+    generate_dot_from_tree(parse_tree)
+
     print("\n")
