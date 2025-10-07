@@ -57,7 +57,6 @@ OR     = "or"
 TRUE   = "true"
 FALSE  = "false"
 
-NOPOP = "_"
 A = 'a'
 B = 'b'
 C = 'c'
@@ -201,7 +200,9 @@ class PDA:
                             self.current_state = ERROR
                     # go to DONE state
                     case None:
+                        # end of input
                         if (self.stack and self.stack.pop()):
+                            # there should not be anything left in the stack
                             self.current_state = ERROR
                         else:
                             self.current_state = DONE
