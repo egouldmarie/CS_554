@@ -1,12 +1,9 @@
 import sys
 import time
-#import importlib
 
+from pda import parseTokens
 from parser import Parser
 from scanner import Tokenize
-
-#importlib.reload(scanner)
-#importlib.reload(parser)
 
 if __name__ == "__main__":
     # read in file text
@@ -33,7 +30,7 @@ if __name__ == "__main__":
     print("\nAbstract Syntax Tree:")
     print("------------------------------------------------------------------------")
 
-    #ast = parser.parseTokens(tokens)
+    #ast = parseTokens(tokens)
 
     parser = Parser(tokens)
     parse_tree = parser.parse()
