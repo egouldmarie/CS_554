@@ -37,7 +37,7 @@ def Tokenize(code):
         ("int",        r"0|([1-9])\d*"),                  # Integer
         ("var",        r"[A-Za-z](\w|'|_)*"),             # Variables
         ("assign",     r":="),                            # Assignment
-        ("sequencing", r";"),                             # Command sequencing
+        ("seq",        r";"),                             # Command sequencing
         ("op_a",       r'[+\-*]'),                        # Arithmetic operators
         ("op_r",       r'=|<|<=|>=|>'),                   # Binary relational operators
         ("newline",    r'\n'),                            # Line endings

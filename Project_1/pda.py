@@ -19,7 +19,7 @@ l_types = {
     "op_a":         "^",
     "op_r":         "r",
     "assign":       "=",
-    "sequencing":   ";",
+    "seq":          ";",
     "lpar":         "(",
     "rpar":         ")",
     "lbrac":        "[",
@@ -35,7 +35,7 @@ INT    = "int"
 VAR    = "var"
 ASSIGN = "assign"
 SKIP   = "skip"
-SEQ    = "sequencing"
+SEQ    = "seq"
 OP_A   = "op_a"
 OP_R   = "op_r"
 NEWL   = "newline"
@@ -109,7 +109,7 @@ class PDA:
                     case 'skip':
                         if (self.stack and self.stack.pop()) != C:
                             self.current_state = ERROR
-                    case 'sequencing':
+                    case 'seq':
                         self.stack.append(C)
                     case 'assign':
                         if (self.stack and self.stack.pop()) == ASSIGN:
