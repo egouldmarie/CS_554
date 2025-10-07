@@ -69,24 +69,24 @@ class PDA:
         self.tokens = tokens
         self.stack = [C]
         self.current_state = EVAL
-        self.count = 1
+        self.pointer = 0
 
     def getNext(self):
-        self.input = (self.tokens and self.tokens.data) or None
-        self.value = (self.tokens and self.tokens.value) or None
-        if (self.tokens and self.tokens.next):
-            self.tokens = self.tokens.next
-        else:
-            self.tokens = None
+        try:
+            self.input = self.tokens[self.pointer].type
+            self.value = self.tokens[self.pointer].value
+        except:
+            self.input = None
+            self.value = None
+
+        self.pointer = self.pointer+1
 
     def step(self):
         self.getNext()
         input = self.input
-        print("Step:", self.count)
+        print("Step:", self.pointer)
         print("Stack:", self.stack)
         print("Input:", input, self.value)
-
-        self.count = self.count+1
 
         match self.current_state:
             case 'Eval':
@@ -214,21 +214,9 @@ class PDA:
             case 'Error':
                 print("Error parsing program")
 
-class Node:
-    def __init__(self, data, value):
-        self.data = data
-        self.value = value
-        self.next = None
-
 def parseTokens(tokens):
-    head = Node(tokens[0].type, tokens[0].value)
-    prev = head
-    for t in range(1, len(tokens)):
-        prev.next = Node(tokens[t].type, tokens[t].value)
-        prev = prev.next
-
-    node = head
-    pda = PDA(node)
+    print("Number of tokens:", len(tokens))
+    pda = PDA(tokens)
 
     while (pda.current_state!=ERROR and pda.current_state!=DONE):
         pda.step()
