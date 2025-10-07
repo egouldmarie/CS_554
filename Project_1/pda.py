@@ -57,7 +57,6 @@ OR     = "or"
 TRUE   = "true"
 FALSE  = "false"
 
-EPSILON = -1
 NOPOP = "_"
 A = 'a'
 B = 'b'
@@ -74,8 +73,8 @@ class PDA:
         self.count = 1
 
     def getNext(self):
-        self.input = (self.tokens and self.tokens.data) or -1
-        self.value = (self.tokens and self.tokens.value) or -1
+        self.input = (self.tokens and self.tokens.data) or None
+        self.value = (self.tokens and self.tokens.value) or None
         if (self.tokens and self.tokens.next):
             self.tokens = self.tokens.next
         else:
@@ -201,7 +200,7 @@ class PDA:
                         else:
                             self.current_state = ERROR
                     # go to DONE state
-                    case -1:
+                    case None:
                         if (self.stack and self.stack.pop()):
                             self.current_state = ERROR
                         else:
