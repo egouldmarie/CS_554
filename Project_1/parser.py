@@ -99,8 +99,6 @@ class Parser:
             return (self.tokens[self.current_token_index + 1].type
                     == expected_type)
         return False
-    
-    
 
     def parse(self):
         '''
@@ -108,10 +106,28 @@ class Parser:
         of tokens associated with a program consisting of a sequence
         of statements.
         '''
-        while self.current_token_index < len(self.tokens):
+        # while self.current_token_index < len(self.tokens):
+        #     _stmt = self.statement()
+        #     if _stmt is not None:
+        #         self.program_ast.append(_stmt)
+        # return self.program_ast
+    
+        # alternative, testing
+        # trying to catch missing ';' tokens
+
+        # begin with the very first statement
+        self.program_ast = [self.statement()]
+        while self.peek(SEQ):
+            self.consume(SEQ)
             _stmt = self.statement()
-            if _stmt is not None:
+            if _stmt:
                 self.program_ast.append(_stmt)
+            else:
+                raise SyntaxError("Extra ';' detected!")
+        if self.current_token_index < len(self.tokens):
+            raise SyntaxError(
+                    "Parsing ended prematurely: perhaps a missing ';'?")
+            
         return self.program_ast
 
     def statement(self):
@@ -225,7 +241,7 @@ class Parser:
               y := y + 1
             od
         Method assumes caller has already verified that the statement
-        to be parsed is indeed an while-do statement.
+        to be parsed is indeed a while-do statement.
         '''
 
         self.consume(WHILE)            # discard 'while'
@@ -393,3 +409,44 @@ class Parser:
             right = self.arith_expr()
             result = (op, left, right)
             return result
+
+################################################################################
+# type flags
+l_types = {
+    "false":        "0",
+    "true":         "1",
+    "not":          "!",
+    "and":          "&",
+    "or":           "|",
+    "skip":         "%",
+    "if":           "<",
+    "then":         "?",
+    "else":         ":",
+    "fi":           ">",
+    "while":        "w",
+    "do":           "\\",
+    "od":           "/",
+    "int":          "n",
+    "var":          "x",
+    "op_a":         "^",
+    "op_r":         "r",
+    "assign":       "=",
+    "sequencing":   ";",
+    "lpar":         "(",
+    "rpar":         ")",
+    "lbrac":        "[",
+    "rbrac":        "]",
+}
+
+class PDA:
+    def __init__(self, input):
+        self.input = input
+
+        self.states = []
+        self.stack = []
+        self.rules = []
+
+def parseTokens(tokens):
+    input = " ".join([l_types[t.type] for t in tokens])
+    input = "'"+input+"'"
+    print(input)
