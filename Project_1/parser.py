@@ -117,16 +117,23 @@ class Parser:
 
         # begin with the very first statement
         self.program_ast = [self.statement()]
+        # then if statement(s) followed by ';', keep processing
         while self.peek(SEQ):
             self.consume(SEQ)
             _stmt = self.statement()
             if _stmt:
                 self.program_ast.append(_stmt)
             else:
+                # scanner may catch all these errors
                 raise SyntaxError("Extra ';' detected!")
         if self.current_token_index < len(self.tokens):
+            # parsing has ended nicely but prematurely, quite likely
+            # due to a missing sequencing token ';' to indicate
+            # further statements to be processed
+            line_num = self.tokens[self.current_token_index - 1].line
             raise SyntaxError(
-                    "Parsing ended prematurely: perhaps a missing ';'?")
+                    "Parsing ended prematurely: perhaps a missing ';' "
+                    f"on line {line_num} ?")
             
         return self.program_ast
 
