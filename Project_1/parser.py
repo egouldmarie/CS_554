@@ -77,7 +77,8 @@ class Parser:
         else:
             raise SyntaxError(
                     f"In Parser.consume(), expected token type "
-                    f"{expected_type} but got {token.type}.")
+                    f"{expected_type} but got {token.type} on "
+                    f"line {token.line}.")
 
     def peek(self, expected_type):
         '''
@@ -121,11 +122,12 @@ class Parser:
         while self.peek(SEQ):
             self.consume(SEQ)
             _stmt = self.statement()
-            if _stmt:
-                self.program_ast.append(_stmt)
-            else:
-                # scanner may catch all these errors
-                raise SyntaxError("Extra ';' detected!")
+            if _stmt != (SKIP):
+                if _stmt:
+                    self.program_ast.append(_stmt)
+                else:
+                    # scanner may catch all these errors
+                    raise SyntaxError("Extra ';' detected!")
         if self.current_token_index < len(self.tokens):
             # parsing has ended nicely but prematurely, quite likely
             # due to a missing sequencing token ';' to indicate
@@ -142,6 +144,8 @@ class Parser:
         Pursue different parsing method(s) based on current statement
         (or what the project details call a 'command').
         '''
+        print("Entering statement() with: ")
+        print(f"    token = {self.current_token}")
         # assignment (e.g., x := 3 + 2 * y)
         if self.current_token.type == VAR and self.peek_ahead(ASSIGN):
             return self.parse_assignment_stmt()
@@ -156,6 +160,7 @@ class Parser:
         
         # while-do
         if self.peek(WHILE):
+            print(f"About to parse the WHILE statement.")
             return self.parse_while_stmt()
 
     def parse_assignment_stmt(self):
@@ -168,10 +173,10 @@ class Parser:
         assign_token = self.consume(ASSIGN)
         right = self.expr()
         result = (ASSIGN, (VAR, var_token.value), right)
-        if self.peek(SEQ):
-            # we check b/c the last statement in a program might
-            # not end with a sequence (;) marker
-            self.consume(SEQ)
+        # if self.peek(SEQ):
+        #     # we check b/c the last statement in a program might
+        #     # not end with a sequence (;) marker
+        #     self.consume(SEQ)
         return result
     
     def parse_skip_stmt(self):
@@ -187,14 +192,16 @@ class Parser:
         or even eliminated from the parse tree.
         '''
         self.consume(SKIP)   # discard 'skip' token
-        if self.peek(SEQ):
-            # we check b/c the last statement in a program might
-            # not end with a sequence (;) marker
-            self.consume(SEQ)
+        # if self.peek(SEQ):
+        #     # we check b/c the last statement in a program might
+        #     # not end with a sequence (;) marker
+        #     self.consume(SEQ)
 
         # we could choose something else here;
-        # None will prompt a statement accumulator to ignore.
-        return None
+        # None will be confused with some errors elsewhere, so we
+        # return (SKIP) and let local caller fxns decide what to do
+        # with a SKIP (typically ignore it).
+        return (SKIP)
     
     def parse_if_stmt(self):
         '''
@@ -214,27 +221,66 @@ class Parser:
         condition = self.bool_expr()   # recursively parse bool cond
         self.consume(THEN)             # discard 'then'
 
+        # true_block = []
+        # while (self.current_token_index < len(self.tokens)
+        #        and self.current_token.type != ELSE):
+        #     _stmt = self.statement()
+        #     if (_stmt is not None):
+        #         true_block.append(_stmt)
+        # self.consume(ELSE)             # discard 'else'
+
+        # fixing true_block to deal correctly with SEQ issues
         true_block = []
-        while (self.current_token_index < len(self.tokens)
-               and self.current_token.type != ELSE):
+        # true block of statements might be empty
+        _stmt = self.statement() # check what this returns?
+        print(f"_stmt = {_stmt}")
+        if _stmt and _stmt != (SKIP):
+            true_block.append(_stmt)
+            print(f"true_block = {true_block}")
+        while self.peek(SEQ):
+            self.consume(SEQ)
             _stmt = self.statement()
-            if (_stmt is not None):
-                true_block.append(_stmt)
+            print(f"inside while() loop: _stmt = {_stmt}")
+            if _stmt != (SKIP):
+                if _stmt:
+                    true_block.append(_stmt)
+                else:
+                    # scanner may catch all these errors
+                    raise SyntaxError("Extra ';' detected in true_block!")
+        
         self.consume(ELSE)             # discard 'else'
 
         else_block = []
-        while (self.current_token_index < len(self.tokens)
-               and self.current_token.type != FI):
+        # else block of statements might be empty
+        _stmt = self.statement()
+        if _stmt and _stmt != (SKIP):
+            else_block.append(_stmt)
+            print(f"else_block = {else_block}")
+        while self.peek(SEQ):
+            self.consume(SEQ)
             _stmt = self.statement()
-            if (_stmt is not None):
-                else_block.append(_stmt)
+            print(f"inside else while() loop: _stmt = {_stmt}")
+            if _stmt != (SKIP):
+                if _stmt:
+                    else_block.append(_stmt)
+                else:
+                    # scanner may catch all these errors
+                    raise SyntaxError("Extra ';' detected!")
+            
         self.consume(FI)               # discard 'fi'
 
-        if self.peek(SEQ):
-            # if-then-else will typically end with ';' marker, but
-            # doesn't have to if it is the last statement in the
-            # program or in a block
-            self.consume(SEQ)
+        # while (self.current_token_index < len(self.tokens)
+        #        and self.current_token.type != FI):
+        #     _stmt = self.statement()
+        #     if (_stmt is not None):
+        #         else_block.append(_stmt)
+        # self.consume(FI)               # discard 'fi'
+
+        # if self.peek(SEQ):
+        #     # if-then-else will typically end with ';' marker, but
+        #     # doesn't have to if it is the last statement in the
+        #     # program or in a block
+        #     self.consume(SEQ)
 
         # note that it's theoretically possible that
         # the true_block and/or while_block is empty
@@ -255,19 +301,38 @@ class Parser:
         condition = self.bool_expr()   # recursively parse bool cond
         self.consume(DO)               # discard 'do'
 
+        # while_block = []
+        # while (self.current_token_index < len(self.tokens)
+        #        and self.current_token.type != OD):
+        #     _stmt = self.statement()
+        #     if (_stmt is not None):
+        #         while_block.append(_stmt)
+        # self.consume(OD)               # discard 'od'
+
+       # alternative, trying to catch problems with ;s
         while_block = []
-        while (self.current_token_index < len(self.tokens)
-               and self.current_token.type != OD):
+        # while block might be empty
+        _stmt = self.statement()
+        if _stmt and _stmt != (SKIP):
+            while_block.append(_stmt)
+        
+        while self.peek(SEQ):
+            self.consume(SEQ)
             _stmt = self.statement()
-            if (_stmt is not None):
-                while_block.append(_stmt)
+            if _stmt != (SKIP):
+                if _stmt:
+                    while_block.append(_stmt)
+                else:
+                    # scanner may catch all these errors
+                    raise SyntaxError("Extra ';' detected!")
         self.consume(OD)               # discard 'od'
 
-        if self.peek(SEQ):
-            # while-do will typically end with ';' marker, but
-            # doesn't have to if it is the last statement in the
-            # program or in a block
-            self.consume(SEQ)
+        # now handled at upper level to detect ';' usage errors
+        # if self.peek(SEQ):
+        #     # while-do will typically end with ';' marker, but
+        #     # doesn't have to if it is the last statement in the
+        #     # program or in a block
+        #     self.consume(SEQ)
 
         # note that it's theoretically possible that
         # the while_block is empty
