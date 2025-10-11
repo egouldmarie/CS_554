@@ -4,7 +4,8 @@ import time
 # from pda import parseTokens
 from parser import Parser
 from scanner import Tokenize
-from dot_graphiic import generate_dot_from_tree
+from trees import (
+    Tree, TreeNode, convert_nested_tuple_to_tree, generate_dot_from_tree)
 
 if __name__ == "__main__":
     # read in file text
@@ -28,16 +29,22 @@ if __name__ == "__main__":
     print("------------------------------------------------------------------------")
 
     # --tokens--> parser ----ast---->
-    print("\nAbstract Syntax Tree:")
+    print("\nParse Tree:")
     print("------------------------------------------------------------------------")
 
     #ast = parseTokens(tokens)
 
     parser = Parser(tokens)
     parse_tree = parser.parse()
-    print(f"parse_tree: {parse_tree}")
+    print(f"{parse_tree}")
     print("------------------------------------------------------------------------")
     
-    generate_dot_from_tree(parse_tree)
+    TreeNode._next_id = 0
+    explicit_tree_root = convert_nested_tuple_to_tree(parse_tree)
+    explicit_tree = Tree(explicit_tree_root)
+    generate_dot_from_tree(explicit_tree.root)
+
+    print(f"Use the 'tree.dot' in Graphviz or VSCode to see the "
+           "resulting abstract syntax tree (AST).")
 
     print("\n")
