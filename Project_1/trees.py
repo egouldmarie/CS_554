@@ -100,7 +100,14 @@ def convert_nested_tuple_to_tree(nested_tuple):
     children_tuples = nested_tuple[1:]
 
     # Establish the current TreeNode
-    current_node = TreeNode(type=node_type, value=node_type)
+    # perhaps define different options for values here?
+    type_to_value = {
+        'add':'+', 'assign':':=', 'if':'if', 'mult':'*', 'not':'not',
+        'prog':'prog', 'sub':'\u2014', 'while':'while',
+        '<':'<', '>':'>', '<=':'<=', '>=':'>=', '=':'='
+    }
+    # current_node = TreeNode(type=node_type, value=node_type)
+    current_node = TreeNode(type=node_type, value=type_to_value[node_type])
 
     # Then recursively convert and add children, with some
     # specialization for subsequent TreeNodes of various types.
@@ -135,6 +142,12 @@ def convert_nested_tuple_to_tree(nested_tuple):
 def generate_dot_from_tree(root_node, filename="tree.dot"):
     
     dot_content = ["digraph Tree {"]
+
+    # could have a dict here defining options for labels
+    # then use node.value as an index to the dictionary
+    # actually won't work easily b/c value can be just about
+    # anything (for vars, for example)
+    labels = {}
 
     def _traverse_and_add_nodes(node):
         dot_content.append(f'    "{node.id}" [label="{node.value}"];')
