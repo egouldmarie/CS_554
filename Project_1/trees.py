@@ -16,7 +16,9 @@ class TreeNode:
     an ordered list of three integers.
     The TreeNode class includes a class-level counter for unique ids,
     which can be reset externally using TreeNode._next_id = n to
-    reset the initial id number to n.
+    reset the initial id number to n. The unique id can be helpful
+    in eventually converting a Tree to DOT code in a .dot file for
+    visualization.
     '''
 
     # Class-level counter for unique IDs
@@ -45,7 +47,7 @@ class TreeNode:
 
 class Tree:
     '''
-    A class to represent a tree of nodes and provide related methods.
+    Tree represents a tree of tree nodes and provides related methods.
     '''
 
     def __init__(self, root = None):
@@ -99,14 +101,16 @@ def convert_nested_tuple_to_tree(nested_tuple):
     # which themselves might be nested tuples
     children_tuples = nested_tuple[1:]
 
-    # Establish the current TreeNode
-    # perhaps define different options for values here?
+    # A dictionary to facilitate the choice of a 'value' for each
+    # node, which in turn will be used eventually as the label for
+    # the node in DOT language and visualization process
     type_to_value = {
         'add':'+', 'assign':':=', 'if':'if', 'mult':'*', 'not':'not',
-        'prog':'prog', 'sub':'\u2014', 'while':'while',
+        'prog':'prog', 'seq':';', 'sub':'\u2014', 'while':'while',
         '<':'<', '>':'>', '<=':'<=', '>=':'>=', '=':'='
     }
-    # current_node = TreeNode(type=node_type, value=node_type)
+
+    # Establish the current TreeNode
     current_node = TreeNode(type=node_type, value=type_to_value[node_type])
 
     # Then recursively convert and add children, with some
@@ -124,10 +128,10 @@ def convert_nested_tuple_to_tree(nested_tuple):
                 if child_node:
                     current_node.children.append(child_node)
         elif isinstance(child_tuple, list):
-            # corresponds to list of stmts inside a while block,
-            # if-true block, or if-else block?
-            _type = ';'
-            _value = ';'
+            # a list corresponds to sequence of stmts inside a while
+            # block, an if-true block, or if-else block.
+            _type = 'seq'
+            _value = type_to_value[_type]
             _child_node = TreeNode(type=_type, value=_value)
             for item in child_tuple:
                 _child_node.children.append(convert_nested_tuple_to_tree(item))
@@ -140,14 +144,17 @@ def convert_nested_tuple_to_tree(nested_tuple):
     return current_node
 
 def generate_dot_from_tree(root_node, filename="tree.dot"):
+    '''
+    Given a Tree (consisting of a tree of TreeNodes), construct the
+    DOT language output corresponding to an undirected graph and
+    save the result in file 'filename.dot'. The resulting .dot file
+    should be able to be interpreted by Graphviz or an extension in
+    VSCode to visualize the graph.
+    Labels for the graph visualization are taken from the 'value'
+    attribute of each TreeNode.
+    '''
     
     dot_content = ["digraph Tree {"]
-
-    # could have a dict here defining options for labels
-    # then use node.value as an index to the dictionary
-    # actually won't work easily b/c value can be just about
-    # anything (for vars, for example)
-    labels = {}
 
     def _traverse_and_add_nodes(node):
         dot_content.append(f'    "{node.id}" [label="{node.value}"];')
@@ -161,4 +168,4 @@ def generate_dot_from_tree(root_node, filename="tree.dot"):
     with open(filename, "w") as f:
         f.write("\n".join(dot_content))
 
-    print(f"\nDOT file '{filename}' generated successfully!\n")
+    print(f"\nDOT file '{filename}.dot' generated successfully!\n")
