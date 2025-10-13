@@ -50,7 +50,8 @@ class Parser:
         self.current_token_index = 0
         self.current_token = self.tokens[0] if self.tokens else None
         # At the top level, the program AST will be a list of
-        # statements, each of which will then have its own sub-AST
+        # statements, each statement being a collection of nested
+        # tuples (essentially sub-trees).
         self.program_ast = []
         self.error_count = 0 # for some debugging control
 
@@ -77,7 +78,8 @@ class Parser:
         else:
             raise SyntaxError(
                     f"In Parser.consume(), expected token type "
-                    f"{expected_type} but got {token.type}.")
+                    f"{expected_type} but got {token.type} on "
+                    f"line {token.line}.")
 
     def peek(self, expected_type):
         '''
@@ -99,8 +101,6 @@ class Parser:
             return (self.tokens[self.current_token_index + 1].type
                     == expected_type)
         return False
-    
-    
 
     def parse(self):
         '''
@@ -108,17 +108,94 @@ class Parser:
         of tokens associated with a program consisting of a sequence
         of statements.
         '''
-        while self.current_token_index < len(self.tokens):
-            _stmt = self.statement()
-            if _stmt is not None:
-                self.program_ast.append(_stmt)
+        
+        self.program_ast = ['prog'] + self.statement_seq()
+
+        if self.current_token_index < len(self.tokens) - 1:
+            # parsing ended prematurely, possibly due to an
+            # unexpected token or a missing sequencing token ';'
+            _last_token = self.tokens[self.current_token_index]
+            _value = _last_token.value
+            _line = _last_token.line
+            raise SyntaxError(
+                    "Parsing ended prematurely, possibly due to an "
+                    "unexpected token or missing seq token ';'. "
+                    "Last token processed was "
+                    f"'{_value}' on line {_line}.")
+            
         return self.program_ast
+    
+    def statement_seq(self):
+        '''
+        Parsing a block or sequence of statements or commands,
+        and returning the sequence as a list.
+        A sequence of statements consists of one or more statements,
+        such as a sequence of statements making up an entire program
+        or a sequence of statements appearing in the 'then' block
+        of an if-then-else structure, etc. A sequence could be a single
+        statement or multiple statements separated by the sequencing
+        symbol ';' (i.e. the semicolon).
+        Note that a sequence never ends with the sequencing symbol ';'
+        (because the ';' signals that another statement should follow).
+        Note also that a sequence is never literally empty; instead, 
+        an effectively 'empty sequence' must consist of one or more
+        'skip' statements (this is also how the general if-then-else
+        structure is used to produce just the if-then component).
+        '''
+        statement_block = []
+
+        # Process the first statement in the sequence.
+        _stmt = self.statement()
+        if _stmt:
+            if _stmt != (SKIP):
+                statement_block.append(_stmt)
+        else:
+            _last_token = self.tokens[self.current_token_index]
+            _value = _last_token.value
+            _line = _last_token.line
+            raise SyntaxError(
+                    "Parser.statement() method encountered a problematic "
+                    f"statement on line {_line}. Last token processed "
+                    f"was '{_value}' on line {_line}.")
+        
+        # Process subsequent statement(s) if we see seq op ';' .
+        while self.peek(SEQ):
+            self.consume(SEQ)
+            _stmt = self.statement()
+            if _stmt:
+                if _stmt != (SKIP):
+                    statement_block.append(_stmt)
+            else:
+                _last_token = self.tokens[self.current_token_index]
+                _value = _last_token.value
+                _line = _last_token.line
+                raise SyntaxError(
+                    "Parser.statement() discovered a missing or "
+                    f"problematic statement on line {_line}. "
+                    "Last token processed "
+                    f"was '{_value}' on line {_line}."
+                )
+        
+        return statement_block
 
     def statement(self):
         '''
         Pursue different parsing method(s) based on current statement
         (or what the project details call a 'command').
         '''
+        if self.current_token is None:
+            # possibly consumed all code while expecting more
+            # e.g. when a seq of commands incorrectly ends with ';'
+            _prev_token = self.tokens[self.current_token_index-1]
+            _value = _prev_token.value
+            _line  = _prev_token.line
+            raise SyntaxError(
+                "Token expected but None found. "
+                " Last token successfully processed "
+                f"was '{_value}' on line {_line}. "
+                "Possible extra ';' token?"
+            )
+        
         # assignment (e.g., x := 3 + 2 * y)
         if self.current_token.type == VAR and self.peek_ahead(ASSIGN):
             return self.parse_assignment_stmt()
@@ -145,10 +222,6 @@ class Parser:
         assign_token = self.consume(ASSIGN)
         right = self.expr()
         result = (ASSIGN, (VAR, var_token.value), right)
-        if self.peek(SEQ):
-            # we check b/c the last statement in a program might
-            # not end with a sequence (;) marker
-            self.consume(SEQ)
         return result
     
     def parse_skip_stmt(self):
@@ -164,14 +237,12 @@ class Parser:
         or even eliminated from the parse tree.
         '''
         self.consume(SKIP)   # discard 'skip' token
-        if self.peek(SEQ):
-            # we check b/c the last statement in a program might
-            # not end with a sequence (;) marker
-            self.consume(SEQ)
 
         # we could choose something else here;
-        # None will prompt a statement accumulator to ignore.
-        return None
+        # None will be confused with some errors elsewhere, so we
+        # return (SKIP) and let local caller fxns decide what to do
+        # with a SKIP (typically ignore it).
+        return (SKIP)
     
     def parse_if_stmt(self):
         '''
@@ -187,34 +258,19 @@ class Parser:
         to be parsed is indeed an if-then-else statement.
         '''
 
-        self.consume(IF)               # discard 'if'
-        condition = self.bool_expr()   # recursively parse bool cond
-        self.consume(THEN)             # discard 'then'
+        self.consume(IF)                   # discard 'if'
+        condition = self.bool_expr()       # recursively parse bool cond
+        self.consume(THEN)                 # discard 'then'
+        
+        true_block = self.statement_seq()  # parse the true block stmts
+        
+        self.consume(ELSE)                 # discard 'else'
+        
+        else_block = self.statement_seq()  # parse the else block stmts
+            
+        self.consume(FI)                   # discard 'fi'
 
-        true_block = []
-        while (self.current_token_index < len(self.tokens)
-               and self.current_token.type != ELSE):
-            _stmt = self.statement()
-            if (_stmt is not None):
-                true_block.append(_stmt)
-        self.consume(ELSE)             # discard 'else'
-
-        else_block = []
-        while (self.current_token_index < len(self.tokens)
-               and self.current_token.type != FI):
-            _stmt = self.statement()
-            if (_stmt is not None):
-                else_block.append(_stmt)
-        self.consume(FI)               # discard 'fi'
-
-        if self.peek(SEQ):
-            # if-then-else will typically end with ';' marker, but
-            # doesn't have to if it is the last statement in the
-            # program or in a block
-            self.consume(SEQ)
-
-        # note that it's theoretically possible that
-        # the true_block and/or while_block is empty
+        # note that the true_block and/or else_block can be empty
         return (IF, condition, true_block, else_block)
 
     def parse_while_stmt(self):
@@ -224,30 +280,20 @@ class Parser:
               x := x - 1;
               y := y + 1
             od
-        Method assumes caller has already verified that the statement
-        to be parsed is indeed an while-do statement.
+        Method assumes caller has already verified that the
+        statement to be parsed is indeed a while-do statement.
         '''
 
         self.consume(WHILE)            # discard 'while'
         condition = self.bool_expr()   # recursively parse bool cond
         self.consume(DO)               # discard 'do'
-
-        while_block = []
-        while (self.current_token_index < len(self.tokens)
-               and self.current_token.type != OD):
-            _stmt = self.statement()
-            if (_stmt is not None):
-                while_block.append(_stmt)
+        
+        # Parse and return the while block of stmts
+        while_block = self.statement_seq()
+                                     
         self.consume(OD)               # discard 'od'
 
-        if self.peek(SEQ):
-            # while-do will typically end with ';' marker, but
-            # doesn't have to if it is the last statement in the
-            # program or in a block
-            self.consume(SEQ)
-
-        # note that it's theoretically possible that
-        # the while_block is empty
+        # note that the while_block can be empty
         return (WHILE, condition, while_block)
     
     def expr(self):
@@ -255,10 +301,8 @@ class Parser:
         Handles either an arithmetic expression (e.g. x + 2 * y)
         or a boolean expression (e.g. x >= y).
         '''
-        # ditinguish boolean vs arithmetic expressions
+        # distinguish boolean vs arithmetic expressions
         if (self.current_token.type in [LBRAC, NOT, AND, OR]):
-        # if (self.peek(LBRAC) or self.peek(NOT) 
-        #     or self.peek_ahead(AND) or self.peek_ahead(OR)):
             result = self.bool_expr()
         else:
             result = self.arith_expr()
@@ -315,14 +359,16 @@ class Parser:
             token = self.consume(VAR)
             return (VAR, token.value)
         elif self.peek(LPAR):
-            self.consume(LPAR)    # without using returned token
+            self.consume(LPAR)    # consume and discard '('
             result = self.expr()  # recursively parse inner expr
-            self.consume(RPAR)    # without using returned token
+            self.consume(RPAR)    # consume and discard ')'
             return result
         else:
+            _value = self.current_token.value
+            _line  = self.current_token.line
             raise SyntaxError(
-                    f"Unexpected token found in Parser.factor(): "
-                    f"{self.current_token.value}.")
+                    "In Parser.factor(), encountered unexpected token "
+                    f"'{_value}' on line {_line}.")
     
     # ====================================== #
     # boolean expressions and components     #
@@ -365,10 +411,6 @@ class Parser:
         the b itself might then be a bool_expr, bool_term, or
         bool_factor.
         '''
-        # if self.peek(VAR):
-        #     # we might have something like x < y
-        #     token = self.consume(VAR)
-        #     return (VAR, token.value)
         if self.peek(NOT):
             self.consume(NOT)
             self.consume(LBRAC)        # discard [
@@ -393,3 +435,44 @@ class Parser:
             right = self.arith_expr()
             result = (op, left, right)
             return result
+
+################################################################################
+# type flags
+l_types = {
+    "false":        "0",
+    "true":         "1",
+    "not":          "!",
+    "and":          "&",
+    "or":           "|",
+    "skip":         "%",
+    "if":           "<",
+    "then":         "?",
+    "else":         ":",
+    "fi":           ">",
+    "while":        "w",
+    "do":           "\\",
+    "od":           "/",
+    "int":          "n",
+    "var":          "x",
+    "op_a":         "^",
+    "op_r":         "r",
+    "assign":       "=",
+    "sequencing":   ";",
+    "lpar":         "(",
+    "rpar":         ")",
+    "lbrac":        "[",
+    "rbrac":        "]",
+}
+
+class PDA:
+    def __init__(self, input):
+        self.input = input
+
+        self.states = []
+        self.stack = []
+        self.rules = []
+
+def parseTokens(tokens):
+    input = " ".join([l_types[t.type] for t in tokens])
+    input = "'"+input+"'"
+    print(input)
