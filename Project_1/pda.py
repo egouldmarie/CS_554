@@ -1,3 +1,32 @@
+################################################################################
+# type flags
+l_types = {
+    "false":        "0",
+    "true":         "1",
+    "not":          "!",
+    "and":          "&",
+    "or":           "|",
+    "skip":         "%",
+    "if":           "<",
+    "then":         "?",
+    "else":         ":",
+    "fi":           ">",
+    "while":        "w",
+    "do":           "\\",
+    "od":           "/",
+    "int":          "n",
+    "var":          "x",
+    "op_a":         "^",
+    "op_r":         "r",
+    "assign":       "=",
+    "sequencing":   ";",
+    "lpar":         "(",
+    "rpar":         ")",
+    "lbrac":        "[",
+    "rbrac":        "]",
+}
+################################################################################
+
 LPAR   = "lpar"
 RPAR   = "rpar"
 LBRAC  = "lbrac"
@@ -6,7 +35,7 @@ INT    = "int"
 VAR    = "var"
 ASSIGN = "assign"
 SKIP   = "skip"
-SEQ    = "seq"
+SEQ    = "sequencing"
 OP_A   = "op_a"
 OP_R   = "op_r"
 NEWL   = "newline"
@@ -80,7 +109,7 @@ class PDA:
                     case 'skip':
                         if (self.stack and self.stack.pop()) != C:
                             self.current_state = ERROR
-                    case 'seq':
+                    case 'sequencing':
                         self.stack.append(C)
                     case 'assign':
                         if (self.stack and self.stack.pop()) == ASSIGN:

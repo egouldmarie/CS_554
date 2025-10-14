@@ -37,11 +37,11 @@ def Tokenize(code):
         ("int",        r"0|([1-9])\d*"),                  # Integer
         ("var",        r"[A-Za-z](\w|'|_)*"),             # Variables
         ("assign",     r":="),                            # Assignment
-        ("seq",        r";"),                             # Command sequencing
+        ("sequencing", r";"),                             # Command sequencing
         ("op_a",       r'[+\-*]'),                        # Arithmetic operators
         ("op_r",       r'=|<|<=|>=|>'),                   # Binary relational operators
         ("newline",    r'\n'),                            # Line endings
-        ("ignore",     r"(--.*|\{-(.|\n|\r)*?-\})|\s+"),  # ignore comments and white space
+        ("ignore",     r"(--.*|\{-(.|\n|\r)*?-\})|\s+"),   # ignore comments and white space
         ("mismatch",   r'.'),                             # Any other character
     ]
     # create the 'master' regex:
