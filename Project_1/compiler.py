@@ -1,10 +1,8 @@
 import sys
-import time
 
-# from pda import parseTokens
 from parser import Parser
 from scanner import Tokenize
-from dot_graphiic import generate_dot_from_tree
+from codegen import RISC_V_CodeGenerator
 
 if __name__ == "__main__":
     # read in file text
@@ -38,6 +36,20 @@ if __name__ == "__main__":
     print(f"parse_tree: {parse_tree}")
     print("------------------------------------------------------------------------")
     
-    generate_dot_from_tree(parse_tree)
+    # generate_dot_from_tree(parse_tree)
+
+    # Generate RISC-V assembly code
+    print("\nRISC-V Assembly Code:")
+    print("------------------------------------------------------------------------")
+    codegen = RISC_V_CodeGenerator()
+    assembly = codegen.generate(parse_tree)
+    print(assembly)
+    print("------------------------------------------------------------------------")
+    
+    # Save assembly to file
+    output_file = sys.argv[1].replace('.while', '.s')
+    with open(output_file, 'w') as f:
+        f.write(assembly)
+    print(f"\nAssembly code saved to: {output_file}")
 
     print("\n")

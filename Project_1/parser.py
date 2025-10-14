@@ -109,6 +109,10 @@ class Parser:
         of statements.
         '''
 
+        # Check for empty program
+        if not self.tokens:
+            raise SyntaxError("Empty program is not allowed. Use 'skip;' for an empty program.")
+
         # begin with the very first statement
         _stmt = self.statement()
         if _stmt:
