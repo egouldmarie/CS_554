@@ -21,9 +21,8 @@ if __name__ == "__main__":
     args = argparser.parse_args()
 
     # read in file text
-    file = open(args.filename, "r")
-    whileCode = file.read()
-    file.close()
+    with open(args.filename, "r") as f:
+        whileCode = f.read()
 
     print("\nInput code:")
     print("-------------------------------------------------------------------")
@@ -63,21 +62,6 @@ if __name__ == "__main__":
     print("-" * 70)
     print("\n")
 
-    # Generate RISC-V assembly code
-    print("\nRISC-V Assembly Code:")
-    print("------------------------------------------------------------------------")
-    codegen = RISC_V_CodeGenerator()
-    # assembly = codegen.generate(parse_tree)
-    assembly = codegen.generate(ast[1])
-    print(assembly)
-    print("------------------------------------------------------------------------")
-    
-    # Save assembly to file
-    output_file = sys.argv[1].replace('.while', '.s')
-    with open(output_file, 'w') as f:
-        f.write(assembly)
-    print(f"\nAssembly code saved to: {output_file}")
-    
     # ============================ #
     #  Generate graphic rep of PT  #
     # ============================ #
@@ -85,7 +69,8 @@ if __name__ == "__main__":
     explicit_parse_tree_root = (
             convert_nested_tuple_parse_tree_to_tree(parse_tree))
     explicit_parse_tree = Tree(explicit_parse_tree_root)
-    generate_dot_from_tree(explicit_parse_tree.root, filename='parse_tree.dot')
+    generate_dot_from_tree(
+            explicit_parse_tree.root, filename='parse_tree.dot')
 
     # ============================ #
     # Generate graphic rep of AST  #
@@ -94,8 +79,80 @@ if __name__ == "__main__":
     explicit_ast_root = convert_nested_tuple_ast_to_tree(ast)
     explicit_ast = Tree(explicit_ast_root)
     generate_dot_from_tree(explicit_ast.root, filename='ast_tree.dot')
-
     print(f"View the '.dot' files in Graphviz or VSCode to see the "
            "resulting abstract syntax tree (AST).")
+
+    # ======================================== #
+    # Generate, display, and save to .s file   #
+    # the RISC-V assembly code                 #
+    # ======================================== #
+    codegen = RISC_V_CodeGenerator()
+    assembly = codegen.generate(ast[1])
+    print("\nRISC-V Assembly Code:")
+    print("-" * 70)
+    print(assembly)
+    print("-" * 70)
+    
+    # Save assembly to file
+    output_file = sys.argv[1].replace('.while', '.s')
+    with open(output_file, 'w') as f:
+        f.write(assembly)
+    print(f"\nAssembly code saved to: {output_file}")
+    
+    # ======================================== #
+    # Construct the associated C code file     #
+    # ======================================== #
+    # this might be included in the codegen.py eventually
+    # instead of here in compiler.py
+    num_vars = len(codegen.variables)
+    c_code = (
+             "#include <stdio.h>\n"
+          +  "#include <stdlib.h>\n"
+          +  "\n"
+          +  "extern void generated_function(int64_t *var_arr);\n"
+          +  "\n"
+          +  "int main(int argc, char *argv[]) {\n"
+          +  "\n"
+          +  "    // Check if correct num of args provided\n"
+          + f"    if(argc != {num_vars + 1}) " + "{\n"
+          + f'        printf("Need {num_vars} args.");\n'
+          +  "        return EXIT_FAILURE;\n"
+          +  "    }\n"
+          +  "\n"
+          + f"    // Establish array to store the {num_vars} int values\n"
+          + f"    int64_t var_array[{num_vars}];\n"
+          +  "\n"
+          +  "    // Initialize the values\n"
+          + f"    for (int i = 0; i < {num_vars}; i++) " + "{\n"
+          +  "        var_array[i] = atoll(argv[i + 1]);\n"
+          +  "    }\n"
+          +  "\n"
+          +  "    // Print initialized array values to verify:\n"
+          +  '    printf("Initial variable values are: \\n");\n'
+          + f"    for (int i = 0; i < {num_vars}; i++) " + "{\n"
+          +  '        printf(\"var_array[%d] = %lld \\n\", i, (long long)var_array[i]);\n'
+          +  "    }\n"
+          +  "\n"
+          +  "    // generated_function(var_array);\n"
+          +  "\n"
+          +  "    // Print final array values:\n"
+          +  '    printf("\\nFinal variable values are: \\n");\n'
+          + f"    for (int i = 0; i < {num_vars}; i++) " + "{\n"
+          +  '        printf(\"var_array[%d] = %lld\\n\", i, (long long)var_array[i]);\n'
+          +  "    }\n"
+          +  "\n"
+          +  "    return EXIT_SUCCESS;\n"
+          +  "}\n"
+    )
+
+    # // Initialize the array using a for loop
+    # for (int i = 0; i < 5; i++) {
+    #     my_array[i] = (long long)i * 100; // Example: assign values 0, 100, 200, 300, 400
+    # }
+
+    c_file_name = args.filename.replace('.while', '.c')
+    with open(c_file_name, 'w') as f:
+        f.write(c_code)
+    print(f"\nC code saved to: {c_file_name}")
 
     print("\n")
