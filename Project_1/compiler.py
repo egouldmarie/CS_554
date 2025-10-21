@@ -6,7 +6,9 @@ import argparse
 from parser import Parser
 from scanner import Tokenize
 from trees import (
-    Tree, TreeNode, convert_nested_tuple_to_tree, generate_dot_from_tree)
+    Tree, TreeNode, generate_dot_from_tree,
+    convert_nested_tuple_parse_tree_to_tree,
+    convert_nested_tuple_ast_to_tree)
 
 if __name__ == "__main__":
 
@@ -36,25 +38,49 @@ if __name__ == "__main__":
         print(token)
         tokens.append(token)
     
-    print("-------------------------------------------------------------------")
+    print("-" * 70)
 
-    # --tokens--> parser ----ast---->
-    print("\nParse Tree:")
-    print("-------------------------------------------------------------------")
-
-    #ast = parseTokens(tokens)
-
+    # ================================ #
+    #  Init a Parser with tokens       #
+    # ================================ #
     parser = Parser(tokens)
-    parse_tree = parser.parse()
-    print(f"{parse_tree}")
-    print("-------------------------------------------------------------------")
     
-    TreeNode._next_id = 0
-    explicit_tree_root = convert_nested_tuple_to_tree(parse_tree)
-    explicit_tree = Tree(explicit_tree_root)
-    generate_dot_from_tree(explicit_tree.root)
+    # ================================ #
+    #  Generate and display the        #
+    #  parse tree (PT) and abstract    #
+    #  syntax tree (AST)               #
+    # ================================ #
+    parse_tree, ast = parser.parse()
 
-    print(f"View the 'tree.dot' file in Graphviz or VSCode to see the "
+    print("\nParse Tree (PT):")
+    print("-" * 70)
+    print(f"{parse_tree}")
+    print("-" * 70)
+
+    print("\nAbstract Syntax Tree (AST):")
+    print("-" * 70)
+    print(f"{ast}")
+    print("-" * 70)
+    print("\n")
+    
+    # ============================ #
+    #  Generate graphic rep of PT  #
+    # ============================ #
+    TreeNode._next_id = 0
+    explicit_parse_tree_root = (
+            convert_nested_tuple_parse_tree_to_tree(parse_tree))
+    explicit_parse_tree = Tree(explicit_parse_tree_root)
+    generate_dot_from_tree(explicit_parse_tree.root, filename='parse_tree.dot')
+
+    # ============================ #
+    # Generate graphic rep of AST  #
+    # ============================ #
+    TreeNode._next_id = 0  # reset id numbering to keep ids small
+    explicit_ast_root = convert_nested_tuple_ast_to_tree(ast)
+    explicit_ast = Tree(explicit_ast_root)
+    generate_dot_from_tree(explicit_ast.root, filename='ast_tree.dot')
+
+    print(f"View the '.dot' files in Graphviz or VSCode to see the "
            "resulting abstract syntax tree (AST).")
 
     print("\n")
