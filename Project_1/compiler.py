@@ -86,7 +86,7 @@ if __name__ == "__main__":
     # Generate, display, and save to .s file   #
     # the RISC-V assembly code                 #
     # ======================================== #
-    function_name = sys.argv[1].split('/')[-1].replace('.while', '').replace('-', '_').replace('\w', '')
+    function_name = args.filename.split('/')[-1].replace('.while', '').replace('-', '_').replace('\w', '')
     codegen = RISC_V_CodeGenerator(function_name)
     assembly = codegen.generate(ast[1])
     print("\nRISC-V Assembly Code:")
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     print("-" * 70)
     
     # Save assembly to file
-    output_file = sys.argv[1].replace('.while', '.s')
+    output_file = args.filename.replace('.while', '.s')
     with open(output_file, 'w') as f:
         f.write(assembly)
     print(f"\nAssembly code saved to: {output_file}")
