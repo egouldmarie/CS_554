@@ -12,9 +12,9 @@ def test_bad_syntax():
     when processed by the Tokenize function.
     """
     bad_syntax_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
-                                  'examples', 'bad_syntax_scanner')
+                                  'examples', 'bad_syntax')
     
-    # Get all .while files in the bad_syntax_scanner directory
+    # Get all .while files in the bad_syntax directory
     bad_syntax_files = [f for f in os.listdir(bad_syntax_dir) if f.endswith('.while')]
     
     # Ensure we found some files to test
