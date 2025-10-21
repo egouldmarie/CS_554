@@ -1,6 +1,6 @@
 .text
-.globl example1-factorial
-example1-factorial:
+.globl example1_factorial
+example1_factorial:
     # Function prologue
     addi sp, sp, -16
     sd ra, 8(sp)
