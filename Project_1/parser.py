@@ -175,6 +175,11 @@ class Parser:
         pt_statement_block = []
         ast_statement_block = []
 
+        # Check for empty program
+        if not self.tokens:
+            raise SyntaxError("Empty program is not allowed. Use 'skip' for an empty program.")
+
+        # begin with the very first statement
         # Process the first statement in the sequence.
         pt_stmt, ast_stmt = self.statement()
         if pt_stmt:
