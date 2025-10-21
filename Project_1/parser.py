@@ -11,7 +11,7 @@ INT    = "int"
 VAR    = "var"
 ASSIGN = "assign"
 SKIP   = "skip"
-SEQ    = "sequencing"
+SEQ    = "seq"
 OP_A   = "op_a"
 OP_R   = "op_r"
 NEWL   = "newline"
@@ -108,39 +108,9 @@ class Parser:
         of tokens associated with a program consisting of a sequence
         of statements.
         '''
+        
+        self.program_ast = ['prog'] + self.statement_seq()
 
-        # Check for empty program
-        if not self.tokens:
-            raise SyntaxError("Empty program is not allowed. Use 'skip;' for an empty program.")
-
-        # begin with the very first statement
-        _stmt = self.statement()
-        if _stmt:
-            if _stmt != (SKIP):
-                self.program_ast.append(_stmt)
-        else:
-            _last_token = self.tokens[self.current_token_index]
-            _value = _last_token.value
-            _line = _last_token.line
-            raise SyntaxError(
-                    "Parser.statement() method encountered a problematic "
-                    f"statement on line {_line}. Last token processed "
-                    f"was '{_value}' on line {_line}.")
-
-        # then if statement(s) followed by ';', keep processing
-        while self.peek(SEQ):
-            self.consume(SEQ)
-            _stmt = self.statement()
-            if _stmt:
-                if _stmt != (SKIP):
-                    self.program_ast.append(_stmt)
-            else:
-                raise SyntaxError(
-                    "Parser.statement() discovered a missing or "
-                    f"problematic statement on line {_line}. "
-                    "Last token processed "
-                    f"was '{_value}' on line {_line}."
-                )
         if self.current_token_index < len(self.tokens) - 1:
             # parsing ended prematurely, possibly due to an
             # unexpected token or a missing sequencing token ';'
@@ -154,6 +124,64 @@ class Parser:
                     f"'{_value}' on line {_line}.")
             
         return self.program_ast
+    
+    def statement_seq(self):
+        '''
+        Parsing a block or sequence of statements or commands,
+        and returning the sequence as a list.
+        A sequence of statements consists of one or more statements,
+        such as a sequence of statements making up an entire program
+        or a sequence of statements appearing in the 'then' block
+        of an if-then-else structure, etc. A sequence could be a single
+        statement or multiple statements separated by the sequencing
+        symbol ';' (i.e. the semicolon).
+        Note that a sequence never ends with the sequencing symbol ';'
+        (because the ';' signals that another statement should follow).
+        Note also that a sequence is never literally empty; instead, 
+        an effectively 'empty sequence' must consist of one or more
+        'skip' statements (this is also how the general if-then-else
+        structure is used to produce just the if-then component).
+        '''
+        statement_block = []
+
+        # Check for empty program
+        if not self.tokens:
+            raise SyntaxError("Empty program is not allowed. Use 'skip' for an empty program.")
+
+        # begin with the very first statement
+        # Process the first statement in the sequence.
+        _stmt = self.statement()
+        if _stmt:
+            if _stmt != (SKIP):
+                statement_block.append(_stmt)
+        else:
+            _last_token = self.tokens[self.current_token_index]
+            _value = _last_token.value
+            _line = _last_token.line
+            raise SyntaxError(
+                    "Parser.statement() method encountered a problematic "
+                    f"statement on line {_line}. Last token processed "
+                    f"was '{_value}' on line {_line}.")
+        
+        # Process subsequent statement(s) if we see seq op ';' .
+        while self.peek(SEQ):
+            self.consume(SEQ)
+            _stmt = self.statement()
+            if _stmt:
+                if _stmt != (SKIP):
+                    statement_block.append(_stmt)
+            else:
+                _last_token = self.tokens[self.current_token_index]
+                _value = _last_token.value
+                _line = _last_token.line
+                raise SyntaxError(
+                    "Parser.statement() discovered a missing or "
+                    f"problematic statement on line {_line}. "
+                    "Last token processed "
+                    f"was '{_value}' on line {_line}."
+                )
+        
+        return statement_block
 
     def statement(self):
         '''
@@ -235,48 +263,19 @@ class Parser:
         to be parsed is indeed an if-then-else statement.
         '''
 
-        self.consume(IF)               # discard 'if'
-        condition = self.bool_expr()   # recursively parse bool cond
-        self.consume(THEN)             # discard 'then'
-
-        # fixing true_block to deal correctly with SEQ issues
-        true_block = []
-        # true block of statements might be empty
-        _stmt = self.statement() # check what this returns?
-        # NEED to deal with possible None for _stmt below:
-        if _stmt and _stmt != (SKIP):
-            true_block.append(_stmt)
-        while self.peek(SEQ):
-            self.consume(SEQ)
-            _stmt = self.statement()
-            if _stmt != (SKIP):
-                if _stmt:
-                    true_block.append(_stmt)
-                else:
-                    # scanner may catch all these errors
-                    raise SyntaxError("Extra ';' detected in true_block!")
+        self.consume(IF)                   # discard 'if'
+        condition = self.bool_expr()       # recursively parse bool cond
+        self.consume(THEN)                 # discard 'then'
         
-        self.consume(ELSE)             # discard 'else'
-
-        else_block = []
-        # else block of statements might be empty
-        # needs to be improved still (see elsewhere for examples)
-        _stmt = self.statement()
-        if _stmt and _stmt != (SKIP):
-            else_block.append(_stmt)
-        while self.peek(SEQ):
-            self.consume(SEQ)
-            _stmt = self.statement()
-            if _stmt != (SKIP):
-                if _stmt:
-                    else_block.append(_stmt)
-                else:
-                    # scanner may catch all these errors
-                    raise SyntaxError("Extra ';' detected!")
+        true_block = self.statement_seq()  # parse the true block stmts
+        
+        self.consume(ELSE)                 # discard 'else'
+        
+        else_block = self.statement_seq()  # parse the else block stmts
             
-        self.consume(FI)               # discard 'fi'
+        self.consume(FI)                   # discard 'fi'
 
-        # note that the true_block and/or while_block can be empty
+        # note that the true_block and/or else_block can be empty
         return (IF, condition, true_block, else_block)
 
     def parse_while_stmt(self):
@@ -293,25 +292,13 @@ class Parser:
         self.consume(WHILE)            # discard 'while'
         condition = self.bool_expr()   # recursively parse bool cond
         self.consume(DO)               # discard 'do'
-
-        while_block = []
-        # while block might be empty
-        _stmt = self.statement()
-        if _stmt and _stmt != (SKIP):
-            while_block.append(_stmt)
         
-        while self.peek(SEQ):
-            self.consume(SEQ)
-            _stmt = self.statement()
-            if _stmt != (SKIP):
-                if _stmt:
-                    while_block.append(_stmt)
-                else:
-                    # scanner may catch all these errors
-                    raise SyntaxError("Extra ';' detected!")
+        # Parse and return the while block of stmts
+        while_block = self.statement_seq()
+                                     
         self.consume(OD)               # discard 'od'
 
-        # note that it's possible to empty while_block
+        # note that the while_block can be empty
         return (WHILE, condition, while_block)
     
     def expr(self):
