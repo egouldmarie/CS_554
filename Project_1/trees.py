@@ -1,4 +1,48 @@
-
+# ======================== #
+#    Useful constants      #
+# (in alphabetical order)  #
+# ======================== #
+ADD       = "add"
+AND       = "and"
+ARITHFACT = 'arith_factor'
+ARITHTERM = 'arith_term'
+ARITHEXPR = 'arith_expr'
+ASSIGN    = "assign"
+BOOLFACT  = 'bool_factor'
+BOOLTERM  = 'bool_term'
+BOOLEXPR  = 'bool_expr'
+BRACS     = 'bracs'
+DO        = "do"
+ELSE      = "else"
+EXPR      = 'expr'
+FALSE     = "false"
+FI        = "fi"
+IF        = "if"
+IGN       = "ignore"
+INT       = "int"
+LBRAC     = "lbrac"
+LPAR      = "lpar"
+MISM      = "mismatch"
+MULT      = "mult"
+NEWL      = "newline"
+NOT       = "not"
+OD        = "od"
+OP_A      = "op_a"
+OP_R      = "op_r"
+OR        = "or"
+PARENS    = 'parens'
+PROG      = 'prog'
+RBRAC     = "rbrac"
+RPAR      = "rpar"
+SEQ       = "seq"
+SKIP      = "skip"
+STMT      = 'stmt'
+STMTLIST  = 'stmt_list'
+SUB       = "sub"
+THEN      = "then"
+TRUE      = "true"
+VAR       = "var"
+WHILE     = "while"
 
 class TreeNode:
     '''
@@ -79,12 +123,127 @@ class Tree:
 # UTILITY Functions  #
 # ================== #
 
-def convert_nested_tuple_to_tree(nested_tuple):
+# modifying from the original temporarily; orig saved below
+def convert_nested_tuple_parse_tree_to_tree(nested_tuple):
     '''
     A recursive function to convert a nested tuple representation of
     a parse tree, such as:
         ('prog', ('assign', ('var', 'y'), ('var', 'x')),
                  ('assign', ('var', 'z'), ('int', 1)) )
+    to a more explicit tree-with-nodes representation (which then
+    is more easily converted to DOT language and stored in a .dot file
+    for display using Graphviz). This is somewhat specialized for
+    the particular parse tree produced by the Parser class as
+    self.program_pt, so modifications to the parser output might
+    require corresponding modifications to this conversion utility
+    as well.
+    '''
+
+    if not nested_tuple:
+        return None
+
+    # Interpret first element of a tuple as node's type.
+    # A node's _value_ may be more complicated.
+    node_type = nested_tuple[0]
+
+    # The remaining elements (if any) are the children,
+    # which themselves might be nested tuples
+    children_tuples = nested_tuple[1:]
+
+    # A dictionary to facilitate the choice of a 'value' for each
+    # node, which in turn will be used eventually as the label for
+    # the node in DOT language and visualization process. Remember
+    # tht this is for the PARSE TREE (not the AST), and so we are
+    # generally avoiding dramatic substitutions, but often a switch
+    # to capital letters makes the graph easier to read. The dict is
+    # (mostly) in alphabetical order by KEY. Most are trivial right
+    # now, but the dict gives a central location for substitutions.
+    type_to_value = {
+        '<':'<', '>':'>', '<=':'<=', '>=':'>=', '=':'=',
+        ADD:'ADD', AND:'AND',
+        ARITHEXPR:ARITHEXPR,
+        ARITHFACT:ARITHFACT,
+        ARITHTERM:ARITHTERM,
+        ASSIGN:ASSIGN,
+        BOOLEXPR:BOOLEXPR,
+        BOOLFACT:BOOLFACT,
+        BOOLTERM:BOOLTERM,
+        DO:'DO',
+        ELSE:'ELSE',
+        EXPR:EXPR,
+        FI:'FI', IF:'IF',
+        LBRAC:'[', LPAR:'(',
+        MULT:'MULT',
+        NOT:'NOT',
+        OD:'OD',
+        PROG:'PROG', 
+        RBRAC:']', RPAR:')',
+        SEQ:'SEQ',
+        SKIP:SKIP,
+        STMT:STMT,
+        SUB:'SUB',
+        THEN:'THEN',
+        WHILE:'WHILE'
+    }
+
+    # Establish the current TreeNode
+    current_node = TreeNode(type=node_type, value=type_to_value[node_type])
+
+    # Then recursively convert and add children, with some
+    # specialization for subsequent TreeNodes of various types.
+    for child_tuple in children_tuples:
+        if isinstance(child_tuple, tuple):
+            # if child is a var or int type, treat it like a leaf
+            if child_tuple[0] in ['var', 'int']:
+                _type = child_tuple[0]
+                _value = child_tuple[1]
+                _child = TreeNode(type=_value, value=_value)
+                current_node.children.append(TreeNode(
+                        type=_type, value=_type, children=[_child]))
+            elif child_tuple[0] in [PARENS]:
+                current_node.children.append(TreeNode(
+                        type=LPAR, value=type_to_value[LPAR]))
+                current_node.children.append(
+                        convert_nested_tuple_parse_tree_to_tree(child_tuple[1]))
+                current_node.children.append(TreeNode(
+                        type=RPAR, value=type_to_value[RPAR]))
+            elif child_tuple[0] in [BRACS]:
+                current_node.children.append(TreeNode(
+                        type=LBRAC, value=type_to_value[LBRAC]))
+                current_node.children.append(
+                        convert_nested_tuple_parse_tree_to_tree(child_tuple[1]))
+                current_node.children.append(TreeNode(
+                        type=RBRAC, value=type_to_value[RBRAC]))
+            else:
+                # if a child is some other nested tuple
+                child_node = (
+                        convert_nested_tuple_parse_tree_to_tree(child_tuple))
+                if child_node:
+                    current_node.children.append(child_node)
+        elif isinstance(child_tuple, list):
+            # a list corresponds to sequence of stmts inside a while
+            # block, an if-true block, or if-else block.
+            _type = 'seq'
+            _value = type_to_value[_type]
+            _child_node = TreeNode(type=_type, value=_value)
+            for item in child_tuple:
+                _child_node.children.append(
+                        convert_nested_tuple_parse_tree_to_tree(item))
+            current_node.children.append(_child_node)
+        else:
+            # child is a 'leaf' value, not a tuple
+            _type = child_tuple
+            _value = type_to_value[_type]
+            current_node.children.append(TreeNode(type=_type, value=_value))
+
+    return current_node
+
+def convert_nested_tuple_ast_to_tree(nested_tuple):
+    '''
+    A recursive function to convert a nested tuple representation of
+    an abstract syntax tree (AST), such as:
+        ('prog', [('assign', 'y', 'x'),
+                  ('assign', 'z', 1)] )
     to a more explicit tree-with-nodes representation (which then
     is more easily converted to DOT language and stored in a .dot file
     for display using Graphviz).
@@ -103,10 +262,14 @@ def convert_nested_tuple_to_tree(nested_tuple):
 
     # A dictionary to facilitate the choice of a 'value' for each
     # node, which in turn will be used eventually as the label for
-    # the node in DOT language and visualization process
+    # the node in DOT language and visualization process. Remember
+    # that this is for the AST (not the parse tree), and so the
+    # substitution choices might be quite different. The dict is
+    # (mostly) in alphabetical order by KEY. Most are trivial right
+    # now, but the dict gives a central location for substitutions.
     type_to_value = {
-        'add':'+', 'assign':':=', 'if':'if', 'mult':'*', 'not':'not',
-        'prog':'prog', 'seq':';', 'sub':'\u2014', 'while':'while',
+        ADD:'+', ASSIGN:':=', IF:'IF', MULT:'*', NOT:'NOT',
+        PROG:'PROG', SEQ:';', SKIP:SKIP, SUB:'\u2014', WHILE:'WHILE',
         '<':'<', '>':'>', '<=':'<=', '>=':'>=', '=':'='
     }
 
@@ -124,7 +287,7 @@ def convert_nested_tuple_to_tree(nested_tuple):
                 current_node.children.append(TreeNode(type=_type, value=_value))
             else:
                 # if a child is some other nested tuple
-                child_node = convert_nested_tuple_to_tree(child_tuple)
+                child_node = convert_nested_tuple_ast_to_tree(child_tuple)
                 if child_node:
                     current_node.children.append(child_node)
         elif isinstance(child_tuple, list):
@@ -134,7 +297,8 @@ def convert_nested_tuple_to_tree(nested_tuple):
             _value = type_to_value[_type]
             _child_node = TreeNode(type=_type, value=_value)
             for item in child_tuple:
-                _child_node.children.append(convert_nested_tuple_to_tree(item))
+                _child_node.children.append(
+                        convert_nested_tuple_ast_to_tree(item))
             current_node.children.append(_child_node)
         else:
             # child is a 'leaf' value, not a tuple
@@ -142,6 +306,7 @@ def convert_nested_tuple_to_tree(nested_tuple):
                     TreeNode(type = child_tuple, value = child_tuple))
 
     return current_node
+
 
 def generate_dot_from_tree(root_node, filename="tree.dot"):
     '''
@@ -168,4 +333,4 @@ def generate_dot_from_tree(root_node, filename="tree.dot"):
     with open(filename, "w") as f:
         f.write("\n".join(dot_content))
 
-    print(f"\nDOT file '{filename}.dot' generated successfully!\n")
+    print(f"DOT file '{filename}' generated successfully!")
