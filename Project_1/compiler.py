@@ -62,11 +62,6 @@ if __name__ == "__main__":
     print(f"{ast}")
     print("-" * 70)
     print("\n")
-    
-    # ============================ #
-    #  Generate graphic rep of PT  #
-    # ============================ #
-    # generate_dot_from_tree(parse_tree)
 
     # Generate RISC-V assembly code
     print("\nRISC-V Assembly Code:")
@@ -81,6 +76,10 @@ if __name__ == "__main__":
     with open(output_file, 'w') as f:
         f.write(assembly)
     print(f"\nAssembly code saved to: {output_file}")
+    
+    # ============================ #
+    #  Generate graphic rep of PT  #
+    # ============================ #
     TreeNode._next_id = 0
     explicit_parse_tree_root = (
             convert_nested_tuple_parse_tree_to_tree(parse_tree))
