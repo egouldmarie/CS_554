@@ -427,12 +427,12 @@ class Parser:
         if self.peek(INT):
             token = self.consume(INT)
             pt_result = ('arith_factor', (INT, int(token.value)))
-            ast_result = int(token.value)
+            ast_result = (INT, int(token.value))
             return (pt_result, ast_result)
         elif self.peek(VAR):
             token = self.consume(VAR)
             pt_result = ('arith_factor', (VAR, token.value))
-            ast_result = token.value
+            ast_result = (VAR, token.value)
             return (pt_result, ast_result)
         elif self.peek(LPAR):
             self.consume(LPAR)    # consume and discard '('
