@@ -6,11 +6,12 @@ class RISC_V_CodeGenerator:
     Uses register allocation strategy instead of stack machine model
     """
     
-    def __init__(self):
+    def __init__(self, name="generated_function"):
         """
         Initialize RISC-V code generator
         """
         self.code = []
+        self.name = name
         self.var_map = {}  # Map variable names to registers or memory locations
         self.next_reg = 8  # Start using registers from x8 (t0-t6)
         self.label_counter = 0
@@ -92,8 +93,8 @@ class RISC_V_CodeGenerator:
         Generate function prologue
         """
         self.gen(".text")
-        self.gen(".globl generated_function")
-        self.gen("generated_function:")
+        self.gen(f".globl {self.name}")
+        self.gen(f"{self.name}:")
         self.gen("    # Function prologue")
         self.gen("    addi sp, sp, -16")
         self.gen("    sd ra, 8(sp)")

@@ -25,13 +25,13 @@ if __name__ == "__main__":
         whileCode = f.read()
 
     print("\nInput code:")
-    print("-------------------------------------------------------------------")
+    print("-" * 70)
     print(whileCode)
-    print("-------------------------------------------------------------------")
+    print("-" * 70)
 
     # ---text---> scanner --tokens-->
     print("\nGenerated tokens:")
-    print("-------------------------------------------------------------------")
+    print("-" * 70)
     tokens = []
     for token in Tokenize(whileCode):
         print(token)
@@ -86,7 +86,8 @@ if __name__ == "__main__":
     # Generate, display, and save to .s file   #
     # the RISC-V assembly code                 #
     # ======================================== #
-    codegen = RISC_V_CodeGenerator()
+    function_name = sys.argv[1].split('/')[-1].replace('.while', '')
+    codegen = RISC_V_CodeGenerator(function_name)
     assembly = codegen.generate(ast[1])
     print("\nRISC-V Assembly Code:")
     print("-" * 70)
@@ -133,7 +134,7 @@ if __name__ == "__main__":
           +  '        printf(\"var_array[%d] = %lld \\n\", i, (long long)var_array[i]);\n'
           +  "    }\n"
           +  "\n"
-          +  "    // generated_function(var_array);\n"
+          +  "    generated_function(var_array);\n"
           +  "\n"
           +  "    // Print final array values:\n"
           +  '    printf("\\nFinal variable values are: \\n");\n'
