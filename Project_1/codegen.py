@@ -350,7 +350,7 @@ def test_improved_generator():
         ])
     ]
     
-    generator = ImprovedGenerator()
+    generator = RISC_V_CodeGenerator()
     assembly = generator.generate(sample_ast)
     
     print("Improved RISC-V Assembly Code:")
