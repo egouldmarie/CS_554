@@ -67,7 +67,8 @@ if __name__ == "__main__":
     print("\nRISC-V Assembly Code:")
     print("------------------------------------------------------------------------")
     codegen = RISC_V_CodeGenerator()
-    assembly = codegen.generate(parse_tree)
+    # assembly = codegen.generate(parse_tree)
+    assembly = codegen.generate(ast)
     print(assembly)
     print("------------------------------------------------------------------------")
     
