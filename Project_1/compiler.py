@@ -110,7 +110,7 @@ if __name__ == "__main__":
              "#include <stdio.h>\n"
           +  "#include <stdlib.h>\n"
           +  "\n"
-          +  "extern void generated_function(int64_t *var_arr);\n"
+          +  f"extern void {codegen.name}(int64_t *var_arr);\n"
           +  "\n"
           +  "int main(int argc, char *argv[]) {\n"
           +  "\n"
@@ -134,7 +134,7 @@ if __name__ == "__main__":
           +  '        printf(\"var_array[%d] = %lld \\n\", i, (long long)var_array[i]);\n'
           +  "    }\n"
           +  "\n"
-          +  "    generated_function(var_array);\n"
+          +  f"    {codegen.name}(var_array);\n"
           +  "\n"
           +  "    // Print final array values:\n"
           +  '    printf("\\nFinal variable values are: \\n");\n'
