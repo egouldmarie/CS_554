@@ -133,6 +133,7 @@ if __name__ == "__main__":
           +  "    }\n"
           +  "\n"
           +  "    // Print initialized array values to verify:\n"
+          +  '    printf("\\n");\n'
           +  '    printf("Initial variable values are: \\n");\n'
           + printVals
           +  "\n"
@@ -141,6 +142,7 @@ if __name__ == "__main__":
           +  "    // Print final array values:\n"
           +  '    printf("\\nFinal variable values are: \\n");\n'
           + printVals
+          +  '    printf("\\n");\n'
           +  "\n"
           +  "    return EXIT_SUCCESS;\n"
           +  "}\n"
