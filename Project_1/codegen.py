@@ -92,15 +92,15 @@ class RISC_V_CodeGenerator:
         """
         Generate function prologue
         """
-        self.gen(".text")
         self.gen(f".globl {self.name}")
+        self.gen(".text")
         self.gen(f"{self.name}:")
         self.gen("    # Function prologue")
-        self.gen("    addi sp, sp, -16")
-        self.gen("    sd ra, 8(sp)")
-        self.gen("    sd fp, 0(sp)")
-        self.gen("    addi fp, sp, 16")
-        self.gen("    # Variable array pointer in a1")
+        #self.gen("    addi sp, sp, -16")
+        #self.gen("    sd ra, 8(sp)")
+        #self.gen("    sd fp, 0(sp)")
+        #self.gen("    addi fp, sp, 16")
+        self.gen("    # Variable array pointer in a0")
         self.gen("")
     
     def _emit_function_epilogue(self):
@@ -108,9 +108,9 @@ class RISC_V_CodeGenerator:
         Generate function epilogue
         """
         self.gen("    # Function epilogue")
-        self.gen("    ld ra, 8(sp)")
-        self.gen("    ld fp, 0(sp)")
-        self.gen("    addi sp, sp, 16")
+        #self.gen("    ld ra, 8(sp)")
+        #self.gen("    ld fp, 0(sp)")
+        #self.gen("    addi sp, sp, 16")
         self.gen("    ret")
         self.gen("")
     
@@ -142,7 +142,7 @@ class RISC_V_CodeGenerator:
         if var_reg.startswith("mem_"):
             # Variable stored in memory
             var_offset = self.variables.index(var_name) * 8
-            self.gen(f"    sd {result_reg}, {var_offset}(a1)")
+            self.gen(f"    sd {result_reg}, {var_offset}(a0)")
         else:
             # Variable stored in register
             self.gen(f"    mv {var_reg}, {result_reg}")
@@ -154,35 +154,41 @@ class RISC_V_CodeGenerator:
         if expr[0] == "int":
             # Integer constant
             value = expr[1]
-            temp_reg = self._get_temp_register()
+            temp_reg = self._get_temp_register() # replace this with push the literal onto the stack
             self.gen(f"    li {temp_reg}, {value}")
             return temp_reg
         elif expr[0] == "var":
             # Variable
             var_name = expr[1]
-            var_reg = self._get_register(var_name)
+            var_reg = self._get_register(var_name) # replace this with push the variable value onto the stack
             if var_reg.startswith("mem_"):
                 # Load from memory
                 var_offset = self.variables.index(var_name) * 8
                 temp_reg = self._get_temp_register()
-                self.gen(f"    ld {temp_reg}, {var_offset}(a1)")
+                self.gen(f"    ld {temp_reg}, {var_offset}(a0)")
                 return temp_reg
             else:
                 # Get from register
                 return var_reg
         elif expr[0] == "add":
             # Addition
-            left_reg = self._generate_expression(expr[1])
+            left_reg = self._generate_expression(expr[1]) 
             right_reg = self._generate_expression(expr[2])
             result_reg = self._get_temp_register()
+            # pop once --> get value from right expression, load into a temp register
+            # pop twice --> get value from left expression, load into a temp register
             self.gen(f"    add {result_reg}, {left_reg}, {right_reg}")
+            # push the result from the addition onto the stack (instead of returning the resulting register)
             return result_reg
         elif expr[0] == "sub":
             # Subtraction
             left_reg = self._generate_expression(expr[1])
             right_reg = self._generate_expression(expr[2])
             result_reg = self._get_temp_register()
+            # pop once --> get value from right expression, load into a temp register
+            # pop twice --> get value from left expression, load into a temp register
             self.gen(f"    sub {result_reg}, {left_reg}, {right_reg}")
+            # push the result from the addition onto the stack (instead of returning the resulting register)
             return result_reg
         elif expr[0] == "mult":
             # Multiplication
@@ -264,9 +270,9 @@ class RISC_V_CodeGenerator:
             reg_name = f"x{self.next_reg}"
             self.next_reg += 1
             return reg_name
-        else:
+        #else:
             # Use a0 as temporary register
-            return "a0"
+        #    return "a0"
     
     def _generate_if_statement(self, stmt):
         """
