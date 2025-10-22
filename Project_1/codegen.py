@@ -12,10 +12,10 @@ class RISC_V_CodeGenerator:
         """
         self.code = []
         self.name = name
-        self.var_map = {}  # Map variable names to registers or memory locations
-        self.next_reg = 8  # Start using registers from x8 (t0-t6)
+        self.var_map = {}       # Map variable names to registers or memory locations
+        self.next_reg = 8       # Start using registers from x8 (t0-t6)
         self.label_counter = 0
-        self.variables = []  # List of all variables
+        self.variables = []     # List of all variables
         self.memory_offset = 0  # Memory offset counter
     
     def _get_register(self, var_name):
