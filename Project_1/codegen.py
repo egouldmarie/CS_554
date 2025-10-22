@@ -135,17 +135,22 @@ class RISC_V_CodeGenerator:
         expr = stmt[2]
         
         # Generate expression code
-        result_reg = self._generate_expression(expr)
+        self._generate_expression(expr)
+        self.gen(f"    ld t0, 0(sp)")                   # load value from stack into a temporary register (t0)
+        self.gen(f"    addi sp, sp, 8")                 # move stack pointer up
         
+        var_offset = self.variables.index(var_name) * 8
+        self.gen(f"    sd t0, {var_offset}(a0)")        # copy value from temporary register (t0) into argument memory
+
         # Store result to variable
-        var_reg = self._get_register(var_name)
-        if var_reg.startswith("mem_"):
+        #var_reg = self._get_register(var_name)
+        #if var_reg.startswith("mem_"):
             # Variable stored in memory
-            var_offset = self.variables.index(var_name) * 8
-            self.gen(f"    sd {result_reg}, {var_offset}(a0)")
-        else:
+            #var_offset = self.variables.index(var_name) * 8
+            #self.gen(f"    sd {result_reg}, {var_offset}(a0)")
+        #else:
             # Variable stored in register
-            self.gen(f"    mv {var_reg}, {result_reg}")
+            #self.gen(f"    mv {var_reg}, {result_reg}")
     
     def _generate_expression(self, expr):
         """
@@ -154,113 +159,167 @@ class RISC_V_CodeGenerator:
         if expr[0] == "int":
             # Integer constant
             value = expr[1]
-            temp_reg = self._get_temp_register() # replace this with push the literal onto the stack
-            self.gen(f"    li {temp_reg}, {value}")
-            return temp_reg
+            self.gen(f"    li t0, {value}")             # put value into a temporary register (t0)
+            self.gen(f"    addi sp, sp, -8")            # move stack pointer down
+            self.gen(f"    sd t0, 0(sp)")               # copy value from temp register into stack
         elif expr[0] == "var":
             # Variable
             var_name = expr[1]
-            var_reg = self._get_register(var_name) # replace this with push the variable value onto the stack
-            if var_reg.startswith("mem_"):
+            #var_reg = self._get_register(var_name)
+            var_offset = self.variables.index(var_name) * 8
+            self.gen(f"    ld t0, {var_offset}(a0)")    # load value into a temporary register (t0)
+            self.gen(f"    addi sp, sp, -8")            # move stack pointer down
+            self.gen(f"    sd t0, 0(sp)")               # copy value from temp register into stack
+
+            #if var_reg.startswith("mem_"):
                 # Load from memory
-                var_offset = self.variables.index(var_name) * 8
-                temp_reg = self._get_temp_register()
-                self.gen(f"    ld {temp_reg}, {var_offset}(a0)")
-                return temp_reg
-            else:
+            #    var_offset = self.variables.index(var_name) * 8
+            #    temp_reg = self._get_temp_register()
+            #    self.gen(f"    ld {temp_reg}, {var_offset}(a0)")
+            #    return temp_reg
+            #else:
                 # Get from register
-                return var_reg
+            #    return var_reg
         elif expr[0] == "add":
             # Addition
-            left_reg = self._generate_expression(expr[1]) 
-            right_reg = self._generate_expression(expr[2])
-            result_reg = self._get_temp_register()
+            self._generate_expression(expr[1]) 
+            self._generate_expression(expr[2])
             # pop once --> get value from right expression, load into a temp register
+            self.gen(f"    ld t1, 0(sp)")       # load value from stack into a temporary register (t1)
+            self.gen(f"    addi sp, sp, 8")     # move stack pointer up
             # pop twice --> get value from left expression, load into a temp register
-            self.gen(f"    add {result_reg}, {left_reg}, {right_reg}")
-            # push the result from the addition onto the stack (instead of returning the resulting register)
-            return result_reg
+            self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
+            #self.gen(f"    addi sp, sp, 8")     # move stack pointer up
+
+            self.gen(f"    add t0, t0, t1")     # perform addition operation, place result in t0
+            # push the result from the addition onto the stack
+            #self.gen(f"    addi sp, sp, -8")    # move stack pointer down
+            self.gen(f"    sd t0, 0(sp)")       # copy value from temp register (t0) into stack
         elif expr[0] == "sub":
             # Subtraction
-            left_reg = self._generate_expression(expr[1])
-            right_reg = self._generate_expression(expr[2])
-            result_reg = self._get_temp_register()
-            # pop once --> get value from right expression, load into a temp register
-            # pop twice --> get value from left expression, load into a temp register
-            self.gen(f"    sub {result_reg}, {left_reg}, {right_reg}")
-            # push the result from the addition onto the stack (instead of returning the resulting register)
-            return result_reg
+            self._generate_expression(expr[1])
+            self._generate_expression(expr[2])
+
+            self.gen(f"    ld t1, 0(sp)")
+            self.gen(f"    addi sp, sp, 8")
+            self.gen(f"    ld t0, 0(sp)")
+
+            self.gen(f"    sub t0, t0, t1")
+
+            self.gen(f"    sd t0, 0(sp)")
         elif expr[0] == "mult":
             # Multiplication
-            left_reg = self._generate_expression(expr[1])
-            right_reg = self._generate_expression(expr[2])
-            result_reg = self._get_temp_register()
-            self.gen(f"    mul {result_reg}, {left_reg}, {right_reg}")
-            return result_reg
+            self._generate_expression(expr[1])
+            self._generate_expression(expr[2])
+
+            self.gen(f"    ld t1, 0(sp)")
+            self.gen(f"    addi sp, sp, 8")
+            self.gen(f"    ld t0, 0(sp)")
+
+            self.gen(f"    mul t0, t0, t1")
+
+            self.gen(f"    sd t0, 0(sp)")
         elif expr[0] == "=":
             # Equality comparison
-            left_reg = self._generate_expression(expr[1])
-            right_reg = self._generate_expression(expr[2])
-            result_reg = self._get_temp_register()
-            self.gen(f"    sub {result_reg}, {left_reg}, {right_reg}")
-            self.gen(f"    seqz {result_reg}, {result_reg}")
-            return result_reg
+            self._generate_expression(expr[1])
+            self._generate_expression(expr[2])
+            
+            self.gen(f"    ld t1, 0(sp)")
+            self.gen(f"    addi sp, sp, 8")
+            self.gen(f"    ld t0, 0(sp)")
+            
+            self.gen(f"    sub t0, t0, t1")
+            self.gen(f"    seqz t0, t0")
+
+            self.gen(f"    sd t0, 0(sp)")
         elif expr[0] == "<":
             # Less than comparison
-            left_reg = self._generate_expression(expr[1])
-            right_reg = self._generate_expression(expr[2])
-            result_reg = self._get_temp_register()
-            self.gen(f"    slt {result_reg}, {left_reg}, {right_reg}")
-            return result_reg
+            self._generate_expression(expr[1])
+            self._generate_expression(expr[2])
+
+            self.gen(f"    ld t1, 0(sp)")
+            self.gen(f"    addi sp, sp, 8")
+            self.gen(f"    ld t0, 0(sp)")
+            
+            self.gen(f"    slt t0, t0, t1")
+            self.gen(f"    sd t0, 0(sp)")
         elif expr[0] == "<=":
             # Less than or equal comparison
-            left_reg = self._generate_expression(expr[1])
-            right_reg = self._generate_expression(expr[2])
-            result_reg = self._get_temp_register()
-            self.gen(f"    slt {result_reg}, {right_reg}, {left_reg}")
-            self.gen(f"    xori {result_reg}, {result_reg}, 1")
-            return result_reg
+            self._generate_expression(expr[1])
+            self._generate_expression(expr[2])
+
+            self.gen(f"    ld t1, 0(sp)")
+            self.gen(f"    addi sp, sp, 8")
+            self.gen(f"    ld t0, 0(sp)")
+            
+            self.gen(f"    slt t0, t0, t1")
+            self.gen(f"    xori t0, t0, 1")
+
+            self.gen(f"    sd t0, 0(sp)")
         elif expr[0] == ">":
             # Greater than comparison
-            left_reg = self._generate_expression(expr[1])
-            right_reg = self._generate_expression(expr[2])
-            result_reg = self._get_temp_register()
-            self.gen(f"    slt {result_reg}, {right_reg}, {left_reg}")
-            return result_reg
+            self._generate_expression(expr[1])
+            self._generate_expression(expr[2])
+            
+            self.gen(f"    ld t1, 0(sp)")
+            self.gen(f"    addi sp, sp, 8")
+            self.gen(f"    ld t0, 0(sp)")
+
+            self.gen(f"    slt t0, t1, t0")
+
+            self.gen(f"    sd t0, 0(sp)")
         elif expr[0] == ">=":
             # Greater than or equal comparison
-            left_reg = self._generate_expression(expr[1])
-            right_reg = self._generate_expression(expr[2])
-            result_reg = self._get_temp_register()
-            self.gen(f"    slt {result_reg}, {left_reg}, {right_reg}")
-            self.gen(f"    xori {result_reg}, {result_reg}, 1")
-            return result_reg
+            self._generate_expression(expr[1])
+            self._generate_expression(expr[2])
+            
+            self.gen(f"    ld t1, 0(sp)")
+            self.gen(f"    addi sp, sp, 8")
+            self.gen(f"    ld t0, 0(sp)")
+
+            self.gen(f"    slt t0, t0, t1")
+            self.gen(f"    xori t0, t0, 1")
+
+            self.gen(f"    sd t0, 0(sp)")
         elif expr[0] in ["true", "false"]:
             # Boolean constant
-            value = 1 if expr[0] == "true" else 0
-            temp_reg = self._get_temp_register()
-            self.gen(f"    li {temp_reg}, {value}")
-            return temp_reg
+            self.gen(f"    addi sp, sp, -8")    # move stack pointer down
+            if expr[0] == "true":
+                self.gen(f"    li t0, 1")       # put 1 into a temporary register (t0)
+                self.gen(f"    sd t0, 0(sp)")   # copy value from temp register into stack
+            else:
+                self.gen(f"    sd t0, 0(sp)")   # copy 0 from x0 (always 0) into stack
         elif expr[0] == "and":
             # Logical AND
-            left_reg = self._generate_expression(expr[1])
-            right_reg = self._generate_expression(expr[2])
-            result_reg = self._get_temp_register()
-            self.gen(f"    and {result_reg}, {left_reg}, {right_reg}")
-            return result_reg
+            self._generate_expression(expr[1])
+            self._generate_expression(expr[2])
+
+            self.gen(f"    ld t1, 0(sp)")
+            self.gen(f"    addi sp, sp, 8")
+            self.gen(f"    ld t0, 0(sp)")
+
+            self.gen(f"    and t0, t0, t1")
+
+            self.gen(f"    sd t0, 0(sp)")
         elif expr[0] == "or":
             # Logical OR
-            left_reg = self._generate_expression(expr[1])
-            right_reg = self._generate_expression(expr[2])
-            result_reg = self._get_temp_register()
-            self.gen(f"    or {result_reg}, {left_reg}, {right_reg}")
-            return result_reg
+            self._generate_expression(expr[1])
+            self._generate_expression(expr[2])
+
+            self.gen(f"    ld t1, 0(sp)")
+            self.gen(f"    addi sp, sp, 8")
+            self.gen(f"    ld t0, 0(sp)")
+
+            self.gen(f"    or t0, t0, t1")
+            
+            self.gen(f"    sd t0, 0(sp)")
         elif expr[0] == "not":
             # Logical NOT
-            operand_reg = self._generate_expression(expr[1])
-            result_reg = self._get_temp_register()
-            self.gen(f"    seqz {result_reg}, {operand_reg}")
-            return result_reg
+            self._generate_expression(expr[1])
+            self.gen(f"    ld t0, 0(sp)")
+
+            self.gen(f"    seqz t0, t0")
+            self.gen(f"    sd t0, 0(sp)")
     
     def _get_temp_register(self):
         """
@@ -283,14 +342,16 @@ class RISC_V_CodeGenerator:
         else_block = stmt[3]
         
         # Generate condition code
-        condition_reg = self._generate_expression(condition)
+        self._generate_expression(condition)
+        self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
+        self.gen(f"    addi sp, sp, 8")     # move stack pointer up
         
         # Generate labels
         else_label = self._new_label()
         end_label = self._new_label()
         
         # Conditional jump
-        self.gen(f"    beqz {condition_reg}, {else_label}")
+        self.gen(f"    beqz t0, {else_label}")
         self.gen("")
         
         # true block
@@ -323,10 +384,12 @@ class RISC_V_CodeGenerator:
         self.gen("")
         
         # Generate condition code
-        condition_reg = self._generate_expression(condition)
+        self._generate_expression(condition)
+        self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
+        self.gen(f"    addi sp, sp, 8")     # move stack pointer up
         
         # Conditional jump
-        self.gen(f"    beqz {condition_reg}, {end_label}")
+        self.gen(f"    beqz t0, {end_label}")
         self.gen("")
         
         # Loop body
