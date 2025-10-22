@@ -106,6 +106,10 @@ if __name__ == "__main__":
     # this might be included in the codegen.py eventually
     # instead of here in compiler.py
     num_vars = len(codegen.variables)
+    printVals = ""
+    for i in range(num_vars):
+        printVals += f"    printf(\"{codegen.variables[i]} = %lld \\n\", (long long)var_array[{i}]);\n"
+
     c_code = (
              "#include <stdio.h>\n"
           +  "#include <stdlib.h>\n"
@@ -130,17 +134,13 @@ if __name__ == "__main__":
           +  "\n"
           +  "    // Print initialized array values to verify:\n"
           +  '    printf("Initial variable values are: \\n");\n'
-          + f"    for (int i = 0; i < {num_vars}; i++) " + "{\n"
-          +  '        printf(\"var_array[%d] = %lld \\n\", i, (long long)var_array[i]);\n'
-          +  "    }\n"
+          + printVals
           +  "\n"
           +  f"    {codegen.name}(var_array);\n"
           +  "\n"
           +  "    // Print final array values:\n"
           +  '    printf("\\nFinal variable values are: \\n");\n'
-          + f"    for (int i = 0; i < {num_vars}; i++) " + "{\n"
-          +  '        printf(\"var_array[%d] = %lld\\n\", i, (long long)var_array[i]);\n'
-          +  "    }\n"
+          + printVals
           +  "\n"
           +  "    return EXIT_SUCCESS;\n"
           +  "}\n"
