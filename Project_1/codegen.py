@@ -107,6 +107,7 @@ class RISC_V_CodeGenerator:
         """
         Generate function epilogue
         """
+        self.gen("")
         self.gen("    # Function epilogue")
         #self.gen("    ld ra, 8(sp)")
         #self.gen("    ld fp, 0(sp)")
@@ -136,6 +137,8 @@ class RISC_V_CodeGenerator:
         
         # Generate expression code
         self._generate_expression(expr)
+        self.gen("")
+        self.gen(f"    # {var_name} := ")
         self.gen(f"    ld t0, 0(sp)")                   # load value from stack into a temporary register (t0)
         self.gen(f"    addi sp, sp, 8")                 # move stack pointer up
         
@@ -159,6 +162,8 @@ class RISC_V_CodeGenerator:
         if expr[0] == "int":
             # Integer constant
             value = expr[1]
+            self.gen(f"")
+            self.gen(f"    # n = {value}")
             self.gen(f"    li t0, {value}")             # put value into a temporary register (t0)
             self.gen(f"    addi sp, sp, -8")            # move stack pointer down
             self.gen(f"    sd t0, 0(sp)")               # copy value from temp register into stack
@@ -166,6 +171,8 @@ class RISC_V_CodeGenerator:
             # Variable
             var_name = expr[1]
             #var_reg = self._get_register(var_name)
+            self.gen(f"")
+            self.gen(f"    # var {var_name}")
             var_offset = self.variables.index(var_name) * 8
             self.gen(f"    ld t0, {var_offset}(a0)")    # load value into a temporary register (t0)
             self.gen(f"    addi sp, sp, -8")            # move stack pointer down
@@ -184,6 +191,8 @@ class RISC_V_CodeGenerator:
             # Addition
             self._generate_expression(expr[1]) 
             self._generate_expression(expr[2])
+            self.gen(f"")
+            self.gen(f"    # Addition")
             # pop once --> get value from right expression, load into a temp register
             self.gen(f"    ld t1, 0(sp)")       # load value from stack into a temporary register (t1)
             self.gen(f"    addi sp, sp, 8")     # move stack pointer up
@@ -200,6 +209,8 @@ class RISC_V_CodeGenerator:
             self._generate_expression(expr[1])
             self._generate_expression(expr[2])
 
+            self.gen(f"")
+            self.gen(f"    # Subtraction")
             self.gen(f"    ld t1, 0(sp)")
             self.gen(f"    addi sp, sp, 8")
             self.gen(f"    ld t0, 0(sp)")
@@ -212,6 +223,8 @@ class RISC_V_CodeGenerator:
             self._generate_expression(expr[1])
             self._generate_expression(expr[2])
 
+            self.gen(f"")
+            self.gen(f"    # Multiplication")
             self.gen(f"    ld t1, 0(sp)")
             self.gen(f"    addi sp, sp, 8")
             self.gen(f"    ld t0, 0(sp)")
@@ -224,6 +237,8 @@ class RISC_V_CodeGenerator:
             self._generate_expression(expr[1])
             self._generate_expression(expr[2])
             
+            self.gen(f"")
+            self.gen(f"    # Equality")
             self.gen(f"    ld t1, 0(sp)")
             self.gen(f"    addi sp, sp, 8")
             self.gen(f"    ld t0, 0(sp)")
@@ -237,6 +252,8 @@ class RISC_V_CodeGenerator:
             self._generate_expression(expr[1])
             self._generate_expression(expr[2])
 
+            self.gen(f"")
+            self.gen(f"    # Less Than")
             self.gen(f"    ld t1, 0(sp)")
             self.gen(f"    addi sp, sp, 8")
             self.gen(f"    ld t0, 0(sp)")
@@ -248,6 +265,8 @@ class RISC_V_CodeGenerator:
             self._generate_expression(expr[1])
             self._generate_expression(expr[2])
 
+            self.gen(f"")
+            self.gen(f"    # Less Than or Equal")
             self.gen(f"    ld t1, 0(sp)")
             self.gen(f"    addi sp, sp, 8")
             self.gen(f"    ld t0, 0(sp)")
@@ -261,6 +280,8 @@ class RISC_V_CodeGenerator:
             self._generate_expression(expr[1])
             self._generate_expression(expr[2])
             
+            self.gen(f"")
+            self.gen(f"    # Greater Than")
             self.gen(f"    ld t1, 0(sp)")
             self.gen(f"    addi sp, sp, 8")
             self.gen(f"    ld t0, 0(sp)")
@@ -273,6 +294,8 @@ class RISC_V_CodeGenerator:
             self._generate_expression(expr[1])
             self._generate_expression(expr[2])
             
+            self.gen(f"")
+            self.gen(f"    # Greater Than or Equal")
             self.gen(f"    ld t1, 0(sp)")
             self.gen(f"    addi sp, sp, 8")
             self.gen(f"    ld t0, 0(sp)")
@@ -283,6 +306,8 @@ class RISC_V_CodeGenerator:
             self.gen(f"    sd t0, 0(sp)")
         elif expr[0] in ["true", "false"]:
             # Boolean constant
+            self.gen(f"")
+            self.gen(f"    # boolean constant = {expr[0]}")
             self.gen(f"    addi sp, sp, -8")    # move stack pointer down
             if expr[0] == "true":
                 self.gen(f"    li t0, 1")       # put 1 into a temporary register (t0)
@@ -294,6 +319,8 @@ class RISC_V_CodeGenerator:
             self._generate_expression(expr[1])
             self._generate_expression(expr[2])
 
+            self.gen(f"")
+            self.gen(f"    # AND")
             self.gen(f"    ld t1, 0(sp)")
             self.gen(f"    addi sp, sp, 8")
             self.gen(f"    ld t0, 0(sp)")
@@ -306,6 +333,8 @@ class RISC_V_CodeGenerator:
             self._generate_expression(expr[1])
             self._generate_expression(expr[2])
 
+            self.gen(f"")
+            self.gen(f"    # OR")
             self.gen(f"    ld t1, 0(sp)")
             self.gen(f"    addi sp, sp, 8")
             self.gen(f"    ld t0, 0(sp)")
@@ -316,6 +345,8 @@ class RISC_V_CodeGenerator:
         elif expr[0] == "not":
             # Logical NOT
             self._generate_expression(expr[1])
+            self.gen(f"")
+            self.gen(f"    # NOT")
             self.gen(f"    ld t0, 0(sp)")
 
             self.gen(f"    seqz t0, t0")
@@ -342,32 +373,35 @@ class RISC_V_CodeGenerator:
         else_block = stmt[3]
         
         # Generate condition code
+        self.gen("")
+        self.gen("    # If Statement")
         self._generate_expression(condition)
         self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
         self.gen(f"    addi sp, sp, 8")     # move stack pointer up
         
         # Generate labels
         else_label = self._new_label()
-        end_label = self._new_label()
+        #end_label = self._new_label()
+        end_label = "end_" + else_label
         
         # Conditional jump
-        self.gen(f"    beqz t0, {else_label}")
         self.gen("")
+        self.gen(f"    beqz t0, {else_label}")
         
         # true block
         for stmt in true_block:
             self._generate_statement(stmt)
         
         self.gen(f"    j {end_label}")
-        self.gen(f"{else_label}:")
         self.gen("")
+        self.gen(f"{else_label}:")
         
         # else block
         for stmt in else_block:
             self._generate_statement(stmt)
         
-        self.gen(f"{end_label}:")
         self.gen("")
+        self.gen(f"{end_label}:")
     
     def _generate_while_statement(self, stmt):
         """
@@ -378,10 +412,12 @@ class RISC_V_CodeGenerator:
         
         # Generate labels
         loop_label = self._new_label()
-        end_label = self._new_label()
+        #end_label = self._new_label()
+        end_label = "end_" + loop_label
         
-        self.gen(f"{loop_label}:")
         self.gen("")
+        self.gen(f"    # While Statement")
+        self.gen(f"{loop_label}:")
         
         # Generate condition code
         self._generate_expression(condition)
@@ -389,16 +425,16 @@ class RISC_V_CodeGenerator:
         self.gen(f"    addi sp, sp, 8")     # move stack pointer up
         
         # Conditional jump
-        self.gen(f"    beqz t0, {end_label}")
         self.gen("")
+        self.gen(f"    beqz t0, {end_label}")
         
         # Loop body
         for stmt in body:
             self._generate_statement(stmt)
         
         self.gen(f"    j {loop_label}")
-        self.gen(f"{end_label}:")
         self.gen("")
+        self.gen(f"{end_label}:")
     
     def _new_label(self):
         """
