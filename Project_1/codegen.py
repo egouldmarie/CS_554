@@ -313,7 +313,7 @@ class RISC_V_CodeGenerator:
                 self.gen(f"    li t0, 1")       # put 1 into a temporary register (t0)
                 self.gen(f"    sd t0, 0(sp)")   # copy value from temp register into stack
             else:
-                self.gen(f"    sd t0, 0(sp)")   # copy 0 from x0 (always 0) into stack
+                self.gen(f"    sd x0, 0(sp)")   # copy 0 from x0 (always 0) into stack
         elif expr[0] == "and":
             # Logical AND
             self._generate_expression(expr[1])
