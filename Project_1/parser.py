@@ -216,11 +216,14 @@ class Parser:
         
         # If the supposed sequence actually consisted of just a single
         # statement, treat it as a statement instead of a sequence
-        if len(pt_statement_block) == 1:
-            # return just the instruction instead of a list
-            pt_statement_block = pt_statement_block[0]
-        if len(ast_statement_block) == 1:
-            ast_statement_block = ast_statement_block[0]
+        # TEMP rethinking the block commented-out below because
+        # causing some issues when generating the risc-v code
+        # from the AST
+        # if len(pt_statement_block) == 1:
+        #     # return just the instruction instead of a list
+        #     pt_statement_block = pt_statement_block[0]
+        # if len(ast_statement_block) == 1:
+        #     ast_statement_block = ast_statement_block[0]
         return (pt_statement_block, ast_statement_block)
 
     def statement(self):
