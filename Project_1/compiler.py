@@ -105,7 +105,10 @@ if __name__ == "__main__":
     # ======================================== #
     # this might be included in the codegen.py eventually
     # instead of here in compiler.py
+
+    # First, some helpful details and sub-strings
     num_vars = len(codegen.variables)
+    printVars = " ".join(codegen.variables)
     printVals = ""
     for i in range(num_vars):
         printVals += f"    printf(\"{codegen.variables[i]} = %lld \\n\", (long long)var_array[{i}]);\n"
@@ -120,7 +123,8 @@ if __name__ == "__main__":
           +  "\n"
           +  "    // Check if correct num of args provided\n"
           + f"    if(argc != {num_vars + 1}) " + "{\n"
-          + f'        printf("Need {num_vars} args.");\n'
+          + f'        printf("Executable requires {num_vars} arguments.\\n");\n'
+          + f'        printf("Usage: <filename> {printVars}\\n");\n'
           +  "        return EXIT_FAILURE;\n"
           +  "    }\n"
           +  "\n"
