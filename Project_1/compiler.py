@@ -1,3 +1,15 @@
+"""
+filename:     compiler.py
+authors:      Emma Gould, Nathan Rowe, Qinghong Shao, Warren Craft
+created:      2025-10-03
+last updated: 2025-10-24
+description:  Coordinates actions of Scanner, Parser, and
+              RISC_V_CodeGenerator classes for the compiling of
+              WHILE language programs, including the construction
+              of bespoke C programs for each compiled WHILE program.
+              Created for CS 554 (Compiler Construction) at UNM.
+"""
+
 import sys
 import time
 import argparse
