@@ -1,3 +1,15 @@
+"""
+filename:     codegen.py
+authors:      Emma Gould, Nathan Rowe, Qinghong Shao, Warren Craft
+created:      2025-10-14
+last updated: 2025-10-24
+description:  Implements the RISC_V_CodeGenerator class to convert an
+              abstract syntax tree (AST) produced from the scanning
+              and parsing of a WHILE language program to risc_v
+              assembly code.
+              Created for CS 554 (Compiler Construction) at UNM.
+"""
+
 from typing import List, Any
 
 class RISC_V_CodeGenerator:
