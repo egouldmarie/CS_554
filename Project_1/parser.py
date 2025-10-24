@@ -1,3 +1,12 @@
+"""
+filename:     parser.py
+authors:      Emma Gould, Nathan Rowe, Qinghong Shao, Warren Craft
+created:      2025-10-02
+last updated: 2025-10-24
+description:  Implements a Parser class for parsing a WHILE language
+              program, using an initial scanner output as input.
+              Created for CS 554 (Compiler Construction) at UNM.
+"""
 
 # ======================== #
 #    Useful constants      #
