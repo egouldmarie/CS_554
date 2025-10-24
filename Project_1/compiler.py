@@ -103,16 +103,18 @@ if __name__ == "__main__":
     # ======================================== #
     # Construct the associated C code file     #
     # ======================================== #
-    # this might be included in the codegen.py eventually
-    # instead of here in compiler.py
 
     # First, some helpful details and sub-strings
     num_vars = len(codegen.variables)
     printVars = " ".join(codegen.variables)
     printVals = ""
     for i in range(num_vars):
-        printVals += f"    printf(\"{codegen.variables[i]} = %lld \\n\", (long long)var_array[{i}]);\n"
+        printVals += (
+                f"    printf(\"{codegen.variables[i]} = %lld \\n\", "
+                f"(long long)var_array[{i}]);\n"
+        )
 
+    # Construct the C code as a Python string (to be printed to a file)
     c_code = (
              "#include <stdio.h>\n"
           +  "#include <stdlib.h>\n"
@@ -151,11 +153,6 @@ if __name__ == "__main__":
           +  "    return EXIT_SUCCESS;\n"
           +  "}\n"
     )
-
-    # // Initialize the array using a for loop
-    # for (int i = 0; i < 5; i++) {
-    #     my_array[i] = (long long)i * 100; // Example: assign values 0, 100, 200, 300, 400
-    # }
 
     c_file_name = args.filename.replace('.while', '.c')
     with open(c_file_name, 'w') as f:
