@@ -180,8 +180,7 @@ class Parser:
         'skip' statements (this is also how the general if-then-else
         structure is used to produce just the if-then component).
         '''
-        statement_block = []
-        pt_statement_block = []
+        pt_statement_block = (SEQ, )
         ast_statement_block = []
 
         # Check for empty program
@@ -192,7 +191,7 @@ class Parser:
         # Process the first statement in the sequence.
         pt_stmt, ast_stmt = self.statement()
         if pt_stmt:
-            pt_statement_block.append(pt_stmt)
+            pt_statement_block = pt_statement_block + (pt_stmt,)
             if ast_stmt != (SKIP,):
                 ast_statement_block.append(ast_stmt)
         else:
@@ -207,11 +206,11 @@ class Parser:
         # Process subsequent statement(s) if we see seq op ';' .
         while self.peek(SEQ):
             self.consume(SEQ)
-            pt_stmt, ast_stmt = self.statement()
+            pt_stmt, ast_stmt = self.statement_seq()
             if pt_stmt:
-                pt_statement_block.append(pt_stmt)
+                pt_statement_block = pt_statement_block + (pt_stmt,)
                 if ast_stmt != (SKIP,):
-                    ast_statement_block.append(ast_stmt)
+                    ast_statement_block = ast_statement_block + ast_stmt
             else:
                 _last_token = self.tokens[self.current_token_index]
                 _value = _last_token.value
@@ -538,97 +537,3 @@ class Parser:
             pt_result = (BOOLFACT, (op, pt_left, pt_right))
             ast_result = (op, ast_left, ast_right)
             return (pt_result, ast_result)
-    
-    def ast_from_parse_tree(self, nested_tuple):
-        '''
-        Recursively produce a nested_tuple version of an abstract
-        syntax tree (AST) from the generated nested-tuple version of
-        the parse tree (PT). The AST is basically just a simplified
-        version of the PT.
-        This approach was chosen over trying to construct the PT and
-        AST in parallel, in part because it simplifies the code and
-        makes tweaks and modifications to the resulting AST easier.
-        The comments use 'node' language, but we're dealing just with
-        nested tuples instead of literal trees and tree nodes.
-        '''
-
-        # Interpret first element of a tuple as node's type.
-        # A node's _value_ may be more complicated.
-        node_type = nested_tuple[0]
-
-        # the remaining elements (if any) are the children,
-        # which themselves might be nested tuples
-        children = nested_tuple[1:]
-
-        # A dictionary to facilitate the choice of a 'value' for each
-        # node, which in turn will be used eventually as the label for
-        # the node in DOT language and visualization process. Most of
-        # the time it makes sense to let the AST use the same labels
-        # as found in the PT, but maybe abbreviate labels later (in
-        # the transformation to a Tree with TreeNodes) when visualizing
-        # the trees.
-        type_to_value = {
-            ADD:ADD, ASSIGN:ASSIGN, IF:IF, MULT:MULT, NOT:NOT,
-            PROG:PROG, SEQ:SEQ, SUB:SUB, WHILE:WHILE,
-            '<':'<', '>':'>', '<=':'<=', '>=':'>=', '=':'='
-        }
-
-        # here somewhere, if we have 'do', 'then', 'else' as node_type,
-        # we just want to return the "sequence" or perhaps single item
-        # that occurs in 2nd position.
-        # Perhaps simply returning nested_tuple[1]? Or … the transformed
-        # version of nested_tuple[1]
-        # if we hit (do, [...], od)
-        # if node_type in ['do', 'then', 'else']:
-        #     _seq_block = []
-        #     for instr in nested_tuple[1]:
-        #         _seq_block.append(self.ast_from_parse_tree(instr))
-        #     return _seq_block
-        # TESTING to avoid block just above
-        if node_type in ['do', 'then', 'else']:
-            node_type = 'seq'
-            children = (nested_tuple[1], )
-        # END TESTING
-
-        # Establish the current TreeNode
-        # current_node = TreeNode(type=node_type, value=type_to_value[node_type])
-        current_node = (type_to_value[node_type],)
-
-        # Then recursively convert and add children, with some
-        # specialization for various types.
-        for child in children:
-            if isinstance(child, tuple):
-                # if child is a var or int type, treat it like a leaf
-                if child[0] in ['var', 'int']:
-                    current_node += (child[1], )
-                else:
-                    # if a child is some other nested tuple
-                    child_node = self.ast_from_parse_tree(child)
-                    if child_node:
-                        current_node += (child_node, )
-            
-            elif isinstance(child, list):
-                # a list corresponds to sequence of stmts inside a while
-                # block, an if-true block, or if-else block.
-                _type = 'seq'
-                _value = type_to_value[_type]
-                _seq_block = []
-                for instr in child:
-                    _seq_block.append(self.ast_from_parse_tree(instr))
-                current_node += (_seq_block,)
-
-            elif child in ['(', ')', '[', ']', 'fi', 'od']:
-                # being explicit about this for clarity: simply
-                # not including redundant details in the AST
-                continue
-
-            else:
-                # child is a 'leaf' value, not a tuple
-                _type = child_tuple
-                print(f"_type = {_type}")
-                _value = type_to_value[_type]
-                print(f"_value = {_value}")
-                current_node.children.append(TreeNode(type=_type, value=_value))
-
-        return current_node
-
