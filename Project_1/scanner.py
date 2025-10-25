@@ -39,7 +39,7 @@ def Tokenize(code):
         ("assign",     r":="),                            # Assignment
         ("seq",        r";"),                             # Command sequencing
         ("op_a",       r'[+\-*]'),                        # Arithmetic operators
-        ("op_r",       r'=|<|<=|>=|>'),                   # Binary relational operators
+        ("op_r",       r'=|<=|<|>=|>'),                   # Binary relational operators
         ("newline",    r'\n'),                            # Line endings
         ("ignore",     r"(--.*|\{-(.|\n|\r)*?-\})|\s+"),  # ignore comments and white space
         ("mismatch",   r'.'),                             # Any other character
