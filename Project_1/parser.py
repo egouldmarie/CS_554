@@ -185,7 +185,8 @@ class Parser:
 
         # Check for empty program
         if not self.tokens:
-            raise SyntaxError("Empty program is not allowed. Use 'skip' for an empty program.")
+            raise SyntaxError("Empty program is not allowed. "
+                              "Use 'skip' for an empty program.")
 
         # begin with the very first statement
         # Process the first statement in the sequence.
@@ -330,6 +331,13 @@ class Parser:
         
         # recursively parse the true block stmts
         pt_true_block, ast_true_block = self.statement_seq()
+        # if ast_true_block is empty, we need to put a 'skip'
+        # as a place-holder; otherwise the 'then' block might disappear
+        # in rare-ish cases where we skip the 'then' and just use
+        # the 'else'
+        if len(ast_true_block) == 0:
+            ast_true_block.append((SKIP,))
+        # WORKING HERE
         
         self.consume(ELSE)                 # discard 'else'
         
