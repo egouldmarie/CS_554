@@ -268,7 +268,8 @@ def convert_nested_tuple_ast_to_tree(nested_tuple):
     # (mostly) in alphabetical order by KEY. Most are trivial right
     # now, but the dict gives a central location for substitutions.
     type_to_value = {
-        ADD:'+', ASSIGN:':=', IF:'IF', MULT:'*', NOT:'NOT',
+        ADD:'+', AND:'AND', ASSIGN:':=', IF:'IF', MULT:'*',
+        NOT:'NOT', OR:'OR',
         PROG:'PROG', SEQ:';', SKIP:SKIP, SUB:'\u2014', WHILE:'WHILE',
         '<':'<', '>':'>', '<=':'<=', '>=':'>=', '=':'='
     }
