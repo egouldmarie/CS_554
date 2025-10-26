@@ -506,8 +506,22 @@ class Parser:
         if self.peek(NOT):
             self.consume(NOT)
             self.consume(LBRAC)        # discard [
-            # recursively parse and return inner expr
+            # Try to parse the inner expression
             pt_result, ast_result = self.bool_expr()
+            
+            # Check if we encountered 'or' by looking at the AST structure
+            # If ast_result is a tuple starting with 'or', apply De Morgan's law
+            if isinstance(ast_result, tuple) and len(ast_result) == 3 and ast_result[0] == OR:
+                # De Morgan: not[A or B] = not[A] and not[B]
+                left = ast_result[1]
+                right = ast_result[2]
+                
+                # Convert to: and(not(left), not(right))
+                pt_result = (BOOLFACT, (AND, (BOOLFACT, (NOT, (BOOLFACT, left))), (BOOLFACT, (NOT, (BOOLFACT, right)))))
+                ast_result = (AND, (NOT, left), (NOT, right))
+                self.consume(RBRAC)
+                return (pt_result, ast_result)
+            
             self.consume(RBRAC)        # discard ]
             pt_result  = (BOOLFACT, (NOT, (BRACS, pt_result)))
             ast_result = (NOT, ast_result)

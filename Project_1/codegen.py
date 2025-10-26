@@ -85,15 +85,26 @@ class RISC_V_CodeGenerator:
                     collect_from_node(node[2])
                 elif node[0] in ["if", "while"]:
                     collect_from_node(node[1])
-                    for stmt in node[2]:
-                        collect_from_node(stmt)
-                elif node[0] in ["add", "sub", "mult", "and", "or", "not"]:
+                    if len(node) > 2:  # Check if has body/list
+                        for stmt in node[2]:
+                            collect_from_node(stmt)
+                    if len(node) > 3:  # if has else block
+                        for stmt in node[3]:
+                            collect_from_node(stmt)
+                elif node[0] in ["add", "sub", "mult", "and", "or", "not", "mult"]:
                     collect_from_node(node[1])
                     if len(node) > 2:
                         collect_from_node(node[2])
                 elif node[0] in ["=", "<", "<=", ">", ">="]:
                     collect_from_node(node[1])
                     collect_from_node(node[2])
+                else:
+                    # Try to recursively collect from all tuple elements
+                    for item in node:
+                        collect_from_node(item)
+            elif isinstance(node, list):
+                for item in node:
+                    collect_from_node(item)
         
         for stmt in ast:
             collect_from_node(stmt)
@@ -382,7 +393,8 @@ class RISC_V_CodeGenerator:
         """
         condition = stmt[1]
         true_block = stmt[2]
-        else_block = stmt[3]
+        # Handle empty else blocks (AST might have 3 or 4 elements)
+        else_block = stmt[3] if len(stmt) > 3 else []
         
         # Generate condition code
         self.gen("")
