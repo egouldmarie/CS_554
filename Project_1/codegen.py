@@ -63,8 +63,9 @@ class RISC_V_CodeGenerator:
         self._emit_function_prologue()
         
         # Generate code
-        for stmt in ast:
-            self._generate_statement(stmt)
+        #for stmt in ast:
+        #    self._generate_statement(stmt)
+        self._generate_statement(ast)
         
         # Generate function epilogue
         self._emit_function_epilogue()
@@ -80,13 +81,13 @@ class RISC_V_CodeGenerator:
                 if node[0] == "var":
                     if node[1] not in self.variables:
                         self.variables.append(node[1])
-                elif node[0] == "assign":
+                elif node[0] in ["seq", "assign", "while"]:
                     collect_from_node(node[1])
                     collect_from_node(node[2])
-                elif node[0] in ["if", "while"]:
+                elif node[0] == "if":
                     collect_from_node(node[1])
-                    for stmt in node[2]:
-                        collect_from_node(stmt)
+                    collect_from_node(node[2])
+                    collect_from_node(node[3])
                 elif node[0] in ["add", "sub", "mult", "and", "or", "not"]:
                     collect_from_node(node[1])
                     if len(node) > 2:
@@ -131,7 +132,12 @@ class RISC_V_CodeGenerator:
         """
         Generate statement code
         """
-        if stmt[0] == "assign":
+        if stmt[0] == "seq":
+            # left node
+            self._generate_statement(stmt[1])
+            # right node
+            self._generate_statement(stmt[2])
+        elif stmt[0] == "assign":
             self._generate_assignment(stmt)
         elif stmt[0] == "if":
             self._generate_if_statement(stmt)
@@ -401,16 +407,18 @@ class RISC_V_CodeGenerator:
         self.gen(f"    beqz t0, {else_label}")
         
         # true block
-        for stmt in true_block:
-            self._generate_statement(stmt)
+        self._generate_statement(true_block)
+        #for stmt in true_block:
+        #    self._generate_statement(stmt)
         
         self.gen(f"    j {end_label}")
         self.gen("")
         self.gen(f"{else_label}:")
         
         # else block
-        for stmt in else_block:
-            self._generate_statement(stmt)
+        self._generate_statement(else_block)
+        #for stmt in else_block:
+        #    self._generate_statement(stmt)
         
         self.gen("")
         self.gen(f"{end_label}:")
@@ -440,9 +448,11 @@ class RISC_V_CodeGenerator:
         self.gen("")
         self.gen(f"    beqz t0, {end_label}")
         
+        # Do
+        self._generate_statement(body)
         # Loop body
-        for stmt in body:
-            self._generate_statement(stmt)
+        #for stmt in body:
+        #    self._generate_statement(stmt)
         
         self.gen(f"    j {loop_label}")
         self.gen("")

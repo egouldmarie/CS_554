@@ -30,6 +30,7 @@ def Tokenize(code):
                 "fi", "while", "do", "od", "and", "or"}
     # Regular Expressions identifying Tokens in our Language
     token_specification = [
+        ("ignore",     r"(--.*|\{-(.|\n|\r)*?-\})|\s+"),  # ignore comments and white space
         ("lpar",       r"\("),                            # Right parenthesis
         ("rpar",       r"\)"),                            # Left parenthesis
         ("lbrac",      r"\["),                            # Right bracket
@@ -39,9 +40,8 @@ def Tokenize(code):
         ("assign",     r":="),                            # Assignment
         ("seq",        r";"),                             # Command sequencing
         ("op_a",       r'[+\-*]'),                        # Arithmetic operators
-        ("op_r",       r'=|<=|<|>=|>'),                   # Binary relational operators
+        ("op_r",       r'<=|>=|=|<|>'),                   # Binary relational operators
         ("newline",    r'\n'),                            # Line endings
-        ("ignore",     r"(--.*|\{-(.|\n|\r)*?-\})|\s+"),  # ignore comments and white space
         ("mismatch",   r'.'),                             # Any other character
     ]
     # create the 'master' regex:

@@ -98,7 +98,7 @@ if __name__ == "__main__":
     # Generate, display, and save to .s file   #
     # the RISC-V assembly code                 #
     # ======================================== #
-    function_name = args.filename.split('/')[-1].replace('.while', '').replace('-', '_').replace('\w', '')
+    function_name = args.filename.split('/')[-1].replace('.while', '').replace('-', '_').replace(' ', '')
     codegen = RISC_V_CodeGenerator(function_name)
     assembly = codegen.generate(ast)
     print("\nRISC-V Assembly Code:")
