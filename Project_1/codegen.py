@@ -1,8 +1,8 @@
 """
 filename:     codegen.py
-authors:      Emma Gould, Nathan Rowe, Qinghong Shao, Warren Craft
+authors:      Jaime Gould, Qinghong Shao, Warren Craft
 created:      2025-10-14
-last updated: 2025-10-24
+last updated: 2025-10-27
 description:  Implements the RISC_V_CodeGenerator class to convert an
               abstract syntax tree (AST) produced from the scanning
               and parsing of a WHILE language program to risc_v
@@ -50,9 +50,9 @@ class RISC_V_CodeGenerator:
             "or": "    or t0, t0, t1",
             "=": "    sub t0, t0, t1\n    seqz t0, t0",
             "<": "    slt t0, t0, t1",
-            "<=": "    slt t0, t0, t1\n    xori t0, t0, 1",
+            "<=": "    slt t0, t1, t0\n    xori t0, t0, 1",
             ">": "    slt t0, t1, t0",
-            ">=": "    slt t0, t1, t0\n    xori t0, t0, 1"
+            ">=": "    slt t0, t0, t1\n    xori t0, t0, 1"
         }
     
     def _get_register(self, var_name):
