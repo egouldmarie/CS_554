@@ -29,6 +29,31 @@ class RISC_V_CodeGenerator:
         self.label_counter = 0
         self.variables = []     # List of all variables
         self.memory_offset = 0  # Memory offset counter
+
+        self.comment_map = {
+            "add": "    # Addition",
+            "sub": "    # Subtraction",
+            "mult": "    # Multiplication",
+            "and": "    # AND",
+            "or": "    # OR",
+            "=": "    # Equality",
+            "<": "    # Less Than",
+            "<=": "    # Less Than or Equal",
+            ">": "    # Greater Than",
+            ">=": "    # Greater Than or Equal"
+            }
+        self.riscv_map = {
+            "add": "    add t0, t0, t1",
+            "sub": "    sub t0, t0, t1",
+            "mult": "    mul t0, t0, t1",
+            "and": "    and t0, t0, t1",
+            "or": "    or t0, t0, t1",
+            "=": "    sub t0, t0, t1\n    seqz t0, t0",
+            "<": "    slt t0, t0, t1",
+            "<=": "    slt t0, t0, t1\n    xori t0, t0, 1",
+            ">": "    slt t0, t1, t0",
+            ">=": "    slt t0, t1, t0\n    xori t0, t0, 1"
+        }
     
     def _get_register(self, var_name):
         """
@@ -63,8 +88,6 @@ class RISC_V_CodeGenerator:
         self._emit_function_prologue()
         
         # Generate code
-        #for stmt in ast:
-        #    self._generate_statement(stmt)
         self._generate_statement(ast)
         
         # Generate function epilogue
@@ -133,10 +156,8 @@ class RISC_V_CodeGenerator:
         Generate statement code
         """
         if stmt[0] == "seq":
-            # left node
-            self._generate_statement(stmt[1])
-            # right node
-            self._generate_statement(stmt[2])
+            self._generate_statement(stmt[1]) # left node
+            self._generate_statement(stmt[2]) # right node
         elif stmt[0] == "assign":
             self._generate_assignment(stmt)
         elif stmt[0] == "if":
@@ -163,16 +184,81 @@ class RISC_V_CodeGenerator:
         var_offset = self.variables.index(var_name) * 8
         self.gen(f"    sd t0, {var_offset}(a0)")        # copy value from temporary register (t0) into argument memory
 
-        # Store result to variable
-        #var_reg = self._get_register(var_name)
-        #if var_reg.startswith("mem_"):
-            # Variable stored in memory
-            #var_offset = self.variables.index(var_name) * 8
-            #self.gen(f"    sd {result_reg}, {var_offset}(a0)")
-        #else:
-            # Variable stored in register
-            #self.gen(f"    mv {var_reg}, {result_reg}")
+    def _generate_if_statement(self, stmt):
+        """
+        Generate if statement code
+        """
+        condition = stmt[1]
+        true_block = stmt[2]
+        else_block = stmt[3]
+        
+        # Generate condition code
+        self.gen("")
+        self.gen("    # If Statement")
+        self._generate_expression(condition)
+        self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
+        self.gen(f"    addi sp, sp, 8")     # move stack pointer up
+        
+        # Generate labels
+        label = self._new_label()
+        else_label = "else_" + label
+        end_label = "end_" + label
+        
+        # Conditional jump
+        self.gen("")
+        self.gen(f"    beqz t0, {else_label}")
+        
+        # true block
+        self._generate_statement(true_block)
+        
+        self.gen(f"    j {end_label}")
+        self.gen("")
+        self.gen(f"{else_label}:")
+        
+        # else block
+        self._generate_statement(else_block)
+        
+        self.gen("")
+        self.gen(f"{end_label}:")
     
+    def _generate_while_statement(self, stmt):
+        """
+        Generate while statement code
+        """
+        condition = stmt[1]
+        body = stmt[2]
+        
+        # Generate labels
+        label = self._new_label()
+        loop_label = "while_" + label
+        end_label = "end_" + label
+        
+        self.gen("")
+        self.gen(f"    # While Statement")
+        self.gen(f"{loop_label}:")
+        
+        # Generate condition code
+        self.gen("")
+        self.gen(f"    # Condition")
+        self._generate_expression(condition)
+        self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
+        self.gen(f"    addi sp, sp, 8")     # move stack pointer up
+        
+        # Conditional jump
+        self.gen("")
+        self.gen(f"    beqz t0, {end_label}")
+        
+        # Do
+        self.gen("")
+        self.gen(f"    # Do")
+        self._generate_statement(body)
+
+        self.gen("")        
+        self.gen(f"    j {loop_label}")
+        self.gen("")
+        self.gen(f"    # Od")
+        self.gen(f"{end_label}:")
+
     def _generate_expression(self, expr):
         """
         Generate expression code, return result register
@@ -181,7 +267,7 @@ class RISC_V_CodeGenerator:
             # Integer constant
             value = expr[1]
             self.gen(f"")
-            self.gen(f"    # n = {value}")
+            self.gen(f"    # literal = {value}")
             self.gen(f"    li t0, {value}")             # put value into a temporary register (t0)
             self.gen(f"    addi sp, sp, -8")            # move stack pointer down
             self.gen(f"    sd t0, 0(sp)")               # copy value from temp register into stack
@@ -195,133 +281,6 @@ class RISC_V_CodeGenerator:
             self.gen(f"    ld t0, {var_offset}(a0)")    # load value into a temporary register (t0)
             self.gen(f"    addi sp, sp, -8")            # move stack pointer down
             self.gen(f"    sd t0, 0(sp)")               # copy value from temp register into stack
-
-            #if var_reg.startswith("mem_"):
-                # Load from memory
-            #    var_offset = self.variables.index(var_name) * 8
-            #    temp_reg = self._get_temp_register()
-            #    self.gen(f"    ld {temp_reg}, {var_offset}(a0)")
-            #    return temp_reg
-            #else:
-                # Get from register
-            #    return var_reg
-        elif expr[0] == "add":
-            # Addition
-            self._generate_expression(expr[1]) 
-            self._generate_expression(expr[2])
-            self.gen(f"")
-            self.gen(f"    # Addition")
-            # pop once --> get value from right expression, load into a temp register
-            self.gen(f"    ld t1, 0(sp)")       # load value from stack into a temporary register (t1)
-            self.gen(f"    addi sp, sp, 8")     # move stack pointer up
-            # pop twice --> get value from left expression, load into a temp register
-            self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
-            #self.gen(f"    addi sp, sp, 8")     # move stack pointer up
-
-            self.gen(f"    add t0, t0, t1")     # perform addition operation, place result in t0
-            # push the result from the addition onto the stack
-            #self.gen(f"    addi sp, sp, -8")    # move stack pointer down
-            self.gen(f"    sd t0, 0(sp)")       # copy value from temp register (t0) into stack
-        elif expr[0] == "sub":
-            # Subtraction
-            self._generate_expression(expr[1])
-            self._generate_expression(expr[2])
-
-            self.gen(f"")
-            self.gen(f"    # Subtraction")
-            self.gen(f"    ld t1, 0(sp)")
-            self.gen(f"    addi sp, sp, 8")
-            self.gen(f"    ld t0, 0(sp)")
-
-            self.gen(f"    sub t0, t0, t1")
-
-            self.gen(f"    sd t0, 0(sp)")
-        elif expr[0] == "mult":
-            # Multiplication
-            self._generate_expression(expr[1])
-            self._generate_expression(expr[2])
-
-            self.gen(f"")
-            self.gen(f"    # Multiplication")
-            self.gen(f"    ld t1, 0(sp)")
-            self.gen(f"    addi sp, sp, 8")
-            self.gen(f"    ld t0, 0(sp)")
-
-            self.gen(f"    mul t0, t0, t1")
-
-            self.gen(f"    sd t0, 0(sp)")
-        elif expr[0] == "=":
-            # Equality comparison
-            self._generate_expression(expr[1])
-            self._generate_expression(expr[2])
-            
-            self.gen(f"")
-            self.gen(f"    # Equality")
-            self.gen(f"    ld t1, 0(sp)")
-            self.gen(f"    addi sp, sp, 8")
-            self.gen(f"    ld t0, 0(sp)")
-            
-            self.gen(f"    sub t0, t0, t1")
-            self.gen(f"    seqz t0, t0")
-
-            self.gen(f"    sd t0, 0(sp)")
-        elif expr[0] == "<":
-            # Less than comparison
-            self._generate_expression(expr[1])
-            self._generate_expression(expr[2])
-
-            self.gen(f"")
-            self.gen(f"    # Less Than")
-            self.gen(f"    ld t1, 0(sp)")
-            self.gen(f"    addi sp, sp, 8")
-            self.gen(f"    ld t0, 0(sp)")
-            
-            self.gen(f"    slt t0, t0, t1")
-            self.gen(f"    sd t0, 0(sp)")
-        elif expr[0] == "<=":
-            # Less than or equal comparison
-            self._generate_expression(expr[1])
-            self._generate_expression(expr[2])
-
-            self.gen(f"")
-            self.gen(f"    # Less Than or Equal")
-            self.gen(f"    ld t1, 0(sp)")
-            self.gen(f"    addi sp, sp, 8")
-            self.gen(f"    ld t0, 0(sp)")
-            
-            self.gen(f"    slt t0, t0, t1")
-            self.gen(f"    xori t0, t0, 1")
-
-            self.gen(f"    sd t0, 0(sp)")
-        elif expr[0] == ">":
-            # Greater than comparison
-            self._generate_expression(expr[1])
-            self._generate_expression(expr[2])
-            
-            self.gen(f"")
-            self.gen(f"    # Greater Than")
-            self.gen(f"    ld t1, 0(sp)")
-            self.gen(f"    addi sp, sp, 8")
-            self.gen(f"    ld t0, 0(sp)")
-
-            self.gen(f"    slt t0, t1, t0")
-
-            self.gen(f"    sd t0, 0(sp)")
-        elif expr[0] == ">=":
-            # Greater than or equal comparison
-            self._generate_expression(expr[1])
-            self._generate_expression(expr[2])
-            
-            self.gen(f"")
-            self.gen(f"    # Greater Than or Equal")
-            self.gen(f"    ld t1, 0(sp)")
-            self.gen(f"    addi sp, sp, 8")
-            self.gen(f"    ld t0, 0(sp)")
-
-            self.gen(f"    slt t0, t0, t1")
-            self.gen(f"    xori t0, t0, 1")
-
-            self.gen(f"    sd t0, 0(sp)")
         elif expr[0] in ["true", "false"]:
             # Boolean constant
             self.gen(f"")
@@ -332,36 +291,24 @@ class RISC_V_CodeGenerator:
                 self.gen(f"    sd t0, 0(sp)")   # copy value from temp register into stack
             else:
                 self.gen(f"    sd x0, 0(sp)")   # copy 0 from x0 (always 0) into stack
-        elif expr[0] == "and":
-            # Logical AND
+        elif expr[0] in ["add", "sub", "mult", "=", "<", ">", "<=", ">=", "and", "or"]:
             self._generate_expression(expr[1])
             self._generate_expression(expr[2])
-
             self.gen(f"")
-            self.gen(f"    # AND")
-            self.gen(f"    ld t1, 0(sp)")
-            self.gen(f"    addi sp, sp, 8")
-            self.gen(f"    ld t0, 0(sp)")
+            self.gen(self.comment_map[expr[0]])
+            # pop once --> get value from right expression, load into a temp register
+            self.gen(f"    ld t1, 0(sp)")       # load value from stack into a temporary register (t1)
+            self.gen(f"    addi sp, sp, 8")     # move stack pointer up
+            # pop twice --> get value from left expression, load into a temp register
+            self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
+            #self.gen(f"    addi sp, sp, 8")     # move stack pointer up
 
-            self.gen(f"    and t0, t0, t1")
-
-            self.gen(f"    sd t0, 0(sp)")
-        elif expr[0] == "or":
-            # Logical OR
-            self._generate_expression(expr[1])
-            self._generate_expression(expr[2])
-
-            self.gen(f"")
-            self.gen(f"    # OR")
-            self.gen(f"    ld t1, 0(sp)")
-            self.gen(f"    addi sp, sp, 8")
-            self.gen(f"    ld t0, 0(sp)")
-
-            self.gen(f"    or t0, t0, t1")
-            
-            self.gen(f"    sd t0, 0(sp)")
+            self.gen(self.riscv_map[expr[0]])   # perform operation, place result in t0
+            # push the result from the addition onto the stack
+            #self.gen(f"    addi sp, sp, -8")    # move stack pointer down
+            self.gen(f"    sd t0, 0(sp)")       # copy value from temp register (t0) into stack
         elif expr[0] == "not":
-            # Logical NOT
+            # Logical NOT (Unary Operator)
             self._generate_expression(expr[1])
             self.gen(f"")
             self.gen(f"    # NOT")
@@ -381,82 +328,6 @@ class RISC_V_CodeGenerator:
         #else:
             # Use a0 as temporary register
         #    return "a0"
-    
-    def _generate_if_statement(self, stmt):
-        """
-        Generate if statement code
-        """
-        condition = stmt[1]
-        true_block = stmt[2]
-        else_block = stmt[3]
-        
-        # Generate condition code
-        self.gen("")
-        self.gen("    # If Statement")
-        self._generate_expression(condition)
-        self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
-        self.gen(f"    addi sp, sp, 8")     # move stack pointer up
-        
-        # Generate labels
-        else_label = self._new_label()
-        #end_label = self._new_label()
-        end_label = "end_" + else_label
-        
-        # Conditional jump
-        self.gen("")
-        self.gen(f"    beqz t0, {else_label}")
-        
-        # true block
-        self._generate_statement(true_block)
-        #for stmt in true_block:
-        #    self._generate_statement(stmt)
-        
-        self.gen(f"    j {end_label}")
-        self.gen("")
-        self.gen(f"{else_label}:")
-        
-        # else block
-        self._generate_statement(else_block)
-        #for stmt in else_block:
-        #    self._generate_statement(stmt)
-        
-        self.gen("")
-        self.gen(f"{end_label}:")
-    
-    def _generate_while_statement(self, stmt):
-        """
-        Generate while statement code
-        """
-        condition = stmt[1]
-        body = stmt[2]
-        
-        # Generate labels
-        loop_label = self._new_label()
-        #end_label = self._new_label()
-        end_label = "end_" + loop_label
-        
-        self.gen("")
-        self.gen(f"    # While Statement")
-        self.gen(f"{loop_label}:")
-        
-        # Generate condition code
-        self._generate_expression(condition)
-        self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
-        self.gen(f"    addi sp, sp, 8")     # move stack pointer up
-        
-        # Conditional jump
-        self.gen("")
-        self.gen(f"    beqz t0, {end_label}")
-        
-        # Do
-        self._generate_statement(body)
-        # Loop body
-        #for stmt in body:
-        #    self._generate_statement(stmt)
-        
-        self.gen(f"    j {loop_label}")
-        self.gen("")
-        self.gen(f"{end_label}:")
     
     def _new_label(self):
         """
