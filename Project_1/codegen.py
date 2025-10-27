@@ -30,7 +30,8 @@ class RISC_V_CodeGenerator:
         self.variables = []     # List of all variables
         self.memory_offset = 0  # Memory offset counter
 
-        self.max_branch = 1
+        #self.max_branch = 1
+        self.max_branch = 0
 
         self.comment_map = {
             "add": "    # Addition",
