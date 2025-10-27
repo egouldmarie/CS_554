@@ -147,7 +147,8 @@ class Parser:
         # _stmts = self.statement_seq()
         pt_stmts, ast_stmts = self.statement_seq()
         self.program_pt = ('prog',) + (pt_stmts,)
-        self.program_ast = ('prog',) + (ast_stmts,)
+        # self.program_ast = ('prog',) + (ast_stmts,)
+        self.program_ast = ast_stmts
 
         if self.current_token_index < len(self.tokens) - 1:
             # parsing ended prematurely, possibly due to an
@@ -181,7 +182,8 @@ class Parser:
         structure is used to produce just the if-then component).
         '''
         pt_statement_block = (SEQ, )
-        ast_statement_block = []
+        # ast_statement_block = []
+        ast_statement_block = (SEQ, )
 
         # Check for empty program
         if not self.tokens:
@@ -193,8 +195,9 @@ class Parser:
         pt_stmt, ast_stmt = self.statement()
         if pt_stmt:
             pt_statement_block = pt_statement_block + (pt_stmt,)
-            if ast_stmt != (SKIP,):
-                ast_statement_block.append(ast_stmt)
+            # if ast_stmt != (SKIP,):
+            # ast_statement_block.append(ast_stmt)
+            ast_statement_block = ast_statement_block + (ast_stmt,)
         else:
             _last_token = self.tokens[self.current_token_index]
             _value = _last_token.value
@@ -205,34 +208,54 @@ class Parser:
                     f"was '{_value}' on line {_line}.")
         
         # Process subsequent statement(s) if we see seq op ';' .
-        while self.peek(SEQ):
-            self.consume(SEQ)
-            pt_stmt, ast_stmt = self.statement_seq()
-            if pt_stmt:
-                pt_statement_block = pt_statement_block + (pt_stmt,)
-                if ast_stmt != (SKIP,):
-                    ast_statement_block = ast_statement_block + ast_stmt
-            else:
-                _last_token = self.tokens[self.current_token_index]
-                _value = _last_token.value
-                _line = _last_token.line
-                raise SyntaxError(
-                    "Parser.statement() discovered a missing or "
-                    f"problematic statement on line {_line}. "
-                    "Last token processed "
-                    f"was '{_value}' on line {_line}."
-                )
+        # while self.peek(SEQ):
+        #     self.consume(SEQ)
+        #     pt_stmt, ast_stmt = self.statement_seq()
+        #     if pt_stmt:
+        #         pt_statement_block = pt_statement_block + (pt_stmt,)
+        #         # if ast_stmt != (SKIP,):
+        #         # ast_statement_block.append(ast_stmt)
+        #         ast_statement_block = ast_statement_block + (ast_stmt,)
+        #     else:
+        #         _last_token = self.tokens[self.current_token_index]
+        #         _value = _last_token.value
+        #         _line = _last_token.line
+        #         raise SyntaxError(
+        #             "Parser.statement() discovered a missing or "
+        #             f"problematic statement on line {_line}. "
+        #             "Last token processed "
+        #             f"was '{_value}' on line {_line}."
+        #         )
         
-        # If the supposed sequence actually consisted of just a single
-        # statement, treat it as a statement instead of a sequence
-        # TEMP rethinking the block commented-out below because
-        # causing some issues when generating the risc-v code
-        # from the AST
-        # if len(pt_statement_block) == 1:
-        #     # return just the instruction instead of a list
-        #     pt_statement_block = pt_statement_block[0]
-        # if len(ast_statement_block) == 1:
-        #     ast_statement_block = ast_statement_block[0]
+        if self.peek(SEQ):
+
+            # Process subsequent statement(s) if we see seq op ';'
+            while self.peek(SEQ):
+                self.consume(SEQ)
+                pt_stmt, ast_stmt = self.statement_seq()
+                if pt_stmt:
+                    pt_statement_block = pt_statement_block + (pt_stmt,)
+                    # if ast_stmt != (SKIP,):
+                    # ast_statement_block.append(ast_stmt)
+                    ast_statement_block = ast_statement_block + (ast_stmt,)
+                else:
+                    _last_token = self.tokens[self.current_token_index]
+                    _value = _last_token.value
+                    _line = _last_token.line
+                    raise SyntaxError(
+                        "Parser.statement() discovered a missing or "
+                        f"problematic statement on line {_line}. "
+                        "Last token processed "
+                        f"was '{_value}' on line {_line}."
+                    )
+        else:
+        
+            # The supposed sequence actually consisted of just a
+            # single statement, so treat it as a statement instead
+            # of a sequence
+            pt_statement_block = pt_statement_block[1]
+            ast_statement_block = ast_statement_block[1]
+
         return (pt_statement_block, ast_statement_block)
 
     def statement(self):
@@ -304,8 +327,6 @@ class Parser:
         '''
         self.consume(SKIP)   # discard 'skip' token
 
-        # We let local caller fxns decide what to do
-        # with a SKIP (parse tree will keep; AST will ignore).
         pt_result  = (SKIP,)
         ast_result = (SKIP,)
         return (pt_result, ast_result)
@@ -407,20 +428,24 @@ class Parser:
         then consists of arithmetic terms and factors).
         '''
         pt_result, ast_result = self.term()
-        while (self.current_token
-               and (self.current_token.value in ['+', '-'])):
-            op_token = self.current_token
-            if op_token.value == '+':
-                self.consume(OP_A)
-                pt_right, ast_right = self.term()
-                pt_result = (ARITHEXPR, (ADD, pt_result, pt_right))
-                ast_result = (ADD, ast_result, ast_right)
+
+        if self.current_token:
+            if (self.current_token.value in ['+', '-']):
+                op_token = self.current_token
+                if op_token.value == '+':
+                    self.consume(OP_A)
+                    pt_right, ast_right = self.term()
+                    pt_result = (ARITHEXPR, (ADD, pt_result, pt_right))
+                    ast_result = (ADD, ast_result, ast_right)
+                else:
+                    # subtraction expression
+                    self.consume(OP_A)
+                    pt_right, ast_right = self.term()
+                    pt_result = (ARITHEXPR, (SUB, pt_result, pt_right))
+                    ast_result = (SUB, ast_result, ast_right)
             else:
-                # subtraction expression
-                self.consume(OP_A)
-                pt_right, ast_right = self.term()
-                pt_result = (ARITHEXPR, (SUB, pt_result, pt_right))
-                ast_result = (SUB, ast_result, ast_right)
+                pt_result = (ARITHEXPR, pt_result)
+                ast_result = ast_result
 
         return (pt_result, ast_result)
     
@@ -431,11 +456,15 @@ class Parser:
         the 'x' and the '2 * y' are both terms.
         '''
         pt_result, ast_result = self.factor()
-        while (self.current_token and self.current_token.value == '*'):
-            op_token = self.consume(OP_A)
-            pt_right, ast_right = self.factor()
-            pt_result = (ARITHTERM, (MULT, pt_result, pt_right))
-            ast_result = (MULT, ast_result, ast_right)
+        if self.current_token:
+            if (self.current_token.value == '*'):
+                op_token = self.consume(OP_A)
+                pt_right, ast_right = self.factor()
+                pt_result = (ARITHTERM, (MULT, pt_result, pt_right))
+                ast_result = (MULT, ast_result, ast_right)
+            else:
+                pt_result = (ARITHTERM, pt_result)
+                ast_result = ast_result
         return (pt_result, ast_result)
     
     def factor(self):
@@ -481,12 +510,15 @@ class Parser:
         NOT[b], [b] are analogous to arithmetic factor.
         '''
         pt_result, ast_result = self.bool_term()
-        if (self.current_token
-               and (self.current_token.value == OR)):
-            self.consume(OR)
-            pt_right, ast_right = self.bool_term()
-            pt_result = (BOOLEXPR, (OR, pt_result, pt_right))
-            ast_result = (OR, ast_result, ast_right)
+        if (self.current_token):
+            if (self.current_token.value == OR):
+                self.consume(OR)
+                pt_right, ast_right = self.bool_term()
+                pt_result = (BOOLEXPR, (OR, pt_result, pt_right))
+                ast_result = (OR, ast_result, ast_right)
+            else:
+                pt_result = (BOOLEXPR, pt_result)
+                ast_result = ast_result
         return (pt_result, ast_result)
     
     def bool_term(self):
@@ -495,11 +527,15 @@ class Parser:
         bool_expr, bool_term, or bool_factor.
         '''
         pt_result, ast_result = self.bool_factor()
-        while (self.current_token and self.peek(AND)):
-            self.consume(AND)
-            pt_right, ast_right = self.bool_factor()
-            pt_result  = (BOOLTERM, (AND, pt_result, pt_right))
-            ast_result = (AND, ast_result, ast_right)
+        if self.current_token:
+            if self.peek(AND):
+                self.consume(AND)
+                pt_right, ast_right = self.bool_factor()
+                pt_result  = (BOOLTERM, (AND, pt_result, pt_right))
+                ast_result = (AND, ast_result, ast_right)
+            else:
+                pt_result = (BOOLTERM, pt_result)
+                ast_result = ast_result
         return (pt_result, ast_result)
     
     def bool_factor(self):
