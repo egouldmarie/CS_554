@@ -100,7 +100,7 @@ if __name__ == "__main__":
     # ======================================== #
     function_name = args.filename.split('/')[-1].replace('.while', '').replace('-', '_').replace('\w', '')
     codegen = RISC_V_CodeGenerator(function_name)
-    assembly = codegen.generate(ast[1])
+    assembly = codegen.generate(ast)
     print("\nRISC-V Assembly Code:")
     print("-" * 70)
     print(assembly)
