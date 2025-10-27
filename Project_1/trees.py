@@ -175,6 +175,7 @@ def convert_nested_tuple_parse_tree_to_tree(nested_tuple):
         LBRAC:'[', LPAR:'(',
         MULT:'MULT',
         NOT:'NOT',
+        OR:'OR',
         OD:'OD',
         PROG:'PROG', 
         RBRAC:']', RPAR:')',
