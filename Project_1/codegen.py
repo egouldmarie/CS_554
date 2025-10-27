@@ -30,7 +30,7 @@ class RISC_V_CodeGenerator:
         self.variables = []     # List of all variables
         self.memory_offset = 0  # Memory offset counter
 
-        self.max_depth = 1
+        self.max_branch = 1
 
         self.comment_map = {
             "add": "    # Addition",
@@ -86,8 +86,6 @@ class RISC_V_CodeGenerator:
 
         self._collect_variables(ast)
         
-        print(f"Max depth: {self.max_depth}")
-
         # Generate function prologue
         self._emit_function_prologue()
         
@@ -103,8 +101,8 @@ class RISC_V_CodeGenerator:
         """
         Collect all variables from AST
         """
-        def collect_from_node(node, depth=0):
-            if depth > self.max_depth: self.max_depth = depth
+        def collect_from_node(node, branch=0):
+            if branch > self.max_branch: self.max_branch = branch
             if isinstance(node, tuple):
                 if node[0] == "var":
                     if node[1] not in self.variables:
@@ -119,10 +117,10 @@ class RISC_V_CodeGenerator:
                 elif node[0] in ["add", "sub", "mult", "and", "or", "not"]:
                     collect_from_node(node[1])
                     if len(node) > 2:
-                        collect_from_node(node[2], depth+1)
+                        collect_from_node(node[2], branch+1)
                 elif node[0] in ["=", "<", "<=", ">", ">="]:
                     collect_from_node(node[1])
-                    collect_from_node(node[2], depth+1)
+                    collect_from_node(node[2], branch+1)
         
         for stmt in ast:
             collect_from_node(stmt)
@@ -137,7 +135,7 @@ class RISC_V_CodeGenerator:
         self.gen(".text")
         self.gen(f"{self.name}:")
         self.gen("    # Function prologue")
-        self.gen(f"    addi sp, sp, -{8*self.max_depth}")
+        self.gen(f"    addi sp, sp, -{8*self.max_branch}")
         #self.gen("    sd ra, 8(sp)")
         #self.gen("    sd fp, 0(sp)")
         #self.gen("    addi fp, sp, 16")
@@ -152,7 +150,7 @@ class RISC_V_CodeGenerator:
         self.gen("    # Function epilogue")
         #self.gen("    ld ra, 8(sp)")
         #self.gen("    ld fp, 0(sp)")
-        self.gen(f"    addi sp, sp, {8*self.max_depth}")
+        self.gen(f"    addi sp, sp, {8*self.max_branch}")
         self.gen("    ret")
         self.gen("")
     
@@ -184,7 +182,6 @@ class RISC_V_CodeGenerator:
         self.gen("")
         self.gen(f"    # {var_name} := ")
         self.gen(f"    ld t0, 0(sp)")                   # load value from stack into a temporary register (t0)
-        #self.gen(f"    addi sp, sp, 8")                 # move stack pointer up
         
         var_offset = self.variables.index(var_name) * 8
         self.gen(f"    sd t0, {var_offset}(a0)")        # copy value from temporary register (t0) into argument memory
@@ -202,7 +199,6 @@ class RISC_V_CodeGenerator:
         self.gen("    # If Statement")
         self._generate_expression(condition)
         self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
-        #self.gen(f"    addi sp, sp, 8")     # move stack pointer up
         
         # Generate labels
         label = self._new_label()
@@ -247,7 +243,6 @@ class RISC_V_CodeGenerator:
         self.gen(f"    # Condition")
         self._generate_expression(condition)
         self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
-        #self.gen(f"    addi sp, sp, 8")     # move stack pointer up
         
         # Conditional jump
         self.gen("")
@@ -264,7 +259,7 @@ class RISC_V_CodeGenerator:
         self.gen(f"    # Od")
         self.gen(f"{end_label}:")
 
-    def _generate_expression(self, expr, depth=0):
+    def _generate_expression(self, expr, branch=0):
         """
         Generate expression code, store result in stack
         """
@@ -274,53 +269,43 @@ class RISC_V_CodeGenerator:
             self.gen(f"")
             self.gen(f"    # literal = {value}")
             self.gen(f"    li t0, {value}")             # put value into a temporary register (t0)
-            #self.gen(f"    addi sp, sp, -8")           # move stack pointer down
-            self.gen(f"    sd t0, {8*depth}(sp)")       # copy value from temp register into stack
+            self.gen(f"    sd t0, {8*branch}(sp)")       # copy value from temp register into stack
         elif expr[0] == "var":
             # Variable
             var_name = expr[1]
-            #var_reg = self._get_register(var_name)
             self.gen(f"")
             self.gen(f"    # var {var_name}")
             var_offset = self.variables.index(var_name) * 8
             self.gen(f"    ld t0, {var_offset}(a0)")    # load value into a temporary register (t0)
-            #self.gen(f"    addi sp, sp, -8")            # move stack pointer down
-            self.gen(f"    sd t0, {8*depth}(sp)")       # copy value from temp register into stack
+            self.gen(f"    sd t0, {8*branch}(sp)")       # copy value from temp register into stack
         elif expr[0] in ["true", "false"]:
             # Boolean constant
             self.gen(f"")
             self.gen(f"    # boolean constant = {expr[0]}")
-            #self.gen(f"    addi sp, sp, -8")    # move stack pointer down
             if expr[0] == "true":
                 self.gen(f"    li t0, 1")               # put 1 into a temporary register (t0)
-                self.gen(f"    sd t0, {8*depth}(sp)")   # copy value from temp register into stack
+                self.gen(f"    sd t0, {8*branch}(sp)")   # copy value from temp register into stack
             else:
-                self.gen(f"    sd x0, {8*depth}(sp)")   # copy 0 from x0 (always 0) into stack
+                self.gen(f"    sd x0, {8*branch}(sp)")   # copy 0 from x0 (always 0) into stack
         elif expr[0] in ["add", "sub", "mult", "=", "<", ">", "<=", ">=", "and", "or"]:
-            self._generate_expression(expr[1], depth)
-            self._generate_expression(expr[2], depth+1)
+            self._generate_expression(expr[1], branch)
+            self._generate_expression(expr[2], branch+1)
             self.gen(f"")
             self.gen(self.comment_map[expr[0]])
-            # pop once --> get value from right expression, load into a temp register
-            self.gen(f"    ld t1, {8*(depth+1)}(sp)")   # load value from stack into a temporary register (t1)
-            #self.gen(f"    addi sp, sp, 8")     # move stack pointer up
-            # pop twice --> get value from left expression, load into a temp register
-            self.gen(f"    ld t0, {8*depth}(sp)")       # load value from stack into a temporary register (t0)
-            #self.gen(f"    addi sp, sp, 8")     # move stack pointer up
+            self.gen(f"    ld t1, {8*(branch+1)}(sp)")   # load value from stack into a temporary register (t1)
+            self.gen(f"    ld t0, {8*branch}(sp)")       # load value from stack into a temporary register (t0)
 
             self.gen(self.riscv_map[expr[0]])           # perform operation, place result in t0
-            # push the result from the addition onto the stack
-            #self.gen(f"    addi sp, sp, -8")    # move stack pointer down
-            self.gen(f"    sd t0, {8*depth}(sp)")       # copy value from temp register (t0) into stack
+            self.gen(f"    sd t0, {8*branch}(sp)")       # copy value from temp register (t0) into stack
         elif expr[0] == "not":
             # Logical NOT (Unary Operator)
-            self._generate_expression(expr[1], depth)
+            self._generate_expression(expr[1], branch)
             self.gen(f"")
             self.gen(f"    # NOT")
-            self.gen(f"    ld t0, {8*depth}(sp)")
+            self.gen(f"    ld t0, {8*branch}(sp)")
 
             self.gen(f"    seqz t0, t0")
-            self.gen(f"    sd t0, {8*depth}(sp)")
+            self.gen(f"    sd t0, {8*branch}(sp)")
     
     def _get_temp_register(self):
         """
