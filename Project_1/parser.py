@@ -147,7 +147,8 @@ class Parser:
         # _stmts = self.statement_seq()
         pt_stmts, ast_stmts = self.statement_seq()
         self.program_pt = ('prog',) + (pt_stmts,)
-        self.program_ast = ('prog',) + (ast_stmts,)
+        # self.program_ast = ('prog',) + (ast_stmts,)
+        self.program_ast = ast_stmts
 
         if self.current_token_index < len(self.tokens) - 1:
             # parsing ended prematurely, possibly due to an
@@ -180,21 +181,23 @@ class Parser:
         'skip' statements (this is also how the general if-then-else
         structure is used to produce just the if-then component).
         '''
-        statement_block = []
-        pt_statement_block = []
-        ast_statement_block = []
+        pt_statement_block = (SEQ, )
+        # ast_statement_block = []
+        ast_statement_block = (SEQ, )
 
         # Check for empty program
         if not self.tokens:
-            raise SyntaxError("Empty program is not allowed. Use 'skip' for an empty program.")
+            raise SyntaxError("Empty program is not allowed. "
+                              "Use 'skip' for an empty program.")
 
         # begin with the very first statement
         # Process the first statement in the sequence.
         pt_stmt, ast_stmt = self.statement()
         if pt_stmt:
-            pt_statement_block.append(pt_stmt)
-            if ast_stmt != (SKIP,):
-                ast_statement_block.append(ast_stmt)
+            pt_statement_block = pt_statement_block + (pt_stmt,)
+            # if ast_stmt != (SKIP,):
+            # ast_statement_block.append(ast_stmt)
+            ast_statement_block = ast_statement_block + (ast_stmt,)
         else:
             _last_token = self.tokens[self.current_token_index]
             _value = _last_token.value
@@ -205,34 +208,54 @@ class Parser:
                     f"was '{_value}' on line {_line}.")
         
         # Process subsequent statement(s) if we see seq op ';' .
-        while self.peek(SEQ):
-            self.consume(SEQ)
-            pt_stmt, ast_stmt = self.statement()
-            if pt_stmt:
-                pt_statement_block.append(pt_stmt)
-                if ast_stmt != (SKIP,):
-                    ast_statement_block.append(ast_stmt)
-            else:
-                _last_token = self.tokens[self.current_token_index]
-                _value = _last_token.value
-                _line = _last_token.line
-                raise SyntaxError(
-                    "Parser.statement() discovered a missing or "
-                    f"problematic statement on line {_line}. "
-                    "Last token processed "
-                    f"was '{_value}' on line {_line}."
-                )
+        # while self.peek(SEQ):
+        #     self.consume(SEQ)
+        #     pt_stmt, ast_stmt = self.statement_seq()
+        #     if pt_stmt:
+        #         pt_statement_block = pt_statement_block + (pt_stmt,)
+        #         # if ast_stmt != (SKIP,):
+        #         # ast_statement_block.append(ast_stmt)
+        #         ast_statement_block = ast_statement_block + (ast_stmt,)
+        #     else:
+        #         _last_token = self.tokens[self.current_token_index]
+        #         _value = _last_token.value
+        #         _line = _last_token.line
+        #         raise SyntaxError(
+        #             "Parser.statement() discovered a missing or "
+        #             f"problematic statement on line {_line}. "
+        #             "Last token processed "
+        #             f"was '{_value}' on line {_line}."
+        #         )
         
-        # If the supposed sequence actually consisted of just a single
-        # statement, treat it as a statement instead of a sequence
-        # TEMP rethinking the block commented-out below because
-        # causing some issues when generating the risc-v code
-        # from the AST
-        # if len(pt_statement_block) == 1:
-        #     # return just the instruction instead of a list
-        #     pt_statement_block = pt_statement_block[0]
-        # if len(ast_statement_block) == 1:
-        #     ast_statement_block = ast_statement_block[0]
+        if self.peek(SEQ):
+
+            # Process subsequent statement(s) if we see seq op ';'
+            while self.peek(SEQ):
+                self.consume(SEQ)
+                pt_stmt, ast_stmt = self.statement_seq()
+                if pt_stmt:
+                    pt_statement_block = pt_statement_block + (pt_stmt,)
+                    # if ast_stmt != (SKIP,):
+                    # ast_statement_block.append(ast_stmt)
+                    ast_statement_block = ast_statement_block + (ast_stmt,)
+                else:
+                    _last_token = self.tokens[self.current_token_index]
+                    _value = _last_token.value
+                    _line = _last_token.line
+                    raise SyntaxError(
+                        "Parser.statement() discovered a missing or "
+                        f"problematic statement on line {_line}. "
+                        "Last token processed "
+                        f"was '{_value}' on line {_line}."
+                    )
+        else:
+        
+            # The supposed sequence actually consisted of just a
+            # single statement, so treat it as a statement instead
+            # of a sequence
+            pt_statement_block = pt_statement_block[1]
+            ast_statement_block = ast_statement_block[1]
+
         return (pt_statement_block, ast_statement_block)
 
     def statement(self):
@@ -304,8 +327,6 @@ class Parser:
         '''
         self.consume(SKIP)   # discard 'skip' token
 
-        # We let local caller fxns decide what to do
-        # with a SKIP (parse tree will keep; AST will ignore).
         pt_result  = (SKIP,)
         ast_result = (SKIP,)
         return (pt_result, ast_result)
@@ -331,6 +352,13 @@ class Parser:
         
         # recursively parse the true block stmts
         pt_true_block, ast_true_block = self.statement_seq()
+        # if ast_true_block is empty, we need to put a 'skip'
+        # as a place-holder; otherwise the 'then' block might disappear
+        # in rare-ish cases where we skip the 'then' and just use
+        # the 'else'
+        if len(ast_true_block) == 0:
+            ast_true_block.append((SKIP,))
+        # WORKING HERE
         
         self.consume(ELSE)                 # discard 'else'
         
@@ -400,20 +428,24 @@ class Parser:
         then consists of arithmetic terms and factors).
         '''
         pt_result, ast_result = self.term()
-        while (self.current_token
-               and (self.current_token.value in ['+', '-'])):
-            op_token = self.current_token
-            if op_token.value == '+':
-                self.consume(OP_A)
-                pt_right, ast_right = self.term()
-                pt_result = (ARITHEXPR, (ADD, pt_result, pt_right))
-                ast_result = (ADD, ast_result, ast_right)
+
+        if self.current_token:
+            if (self.current_token.value in ['+', '-']):
+                op_token = self.current_token
+                if op_token.value == '+':
+                    self.consume(OP_A)
+                    pt_right, ast_right = self.term()
+                    pt_result = (ARITHEXPR, (ADD, pt_result, pt_right))
+                    ast_result = (ADD, ast_result, ast_right)
+                else:
+                    # subtraction expression
+                    self.consume(OP_A)
+                    pt_right, ast_right = self.term()
+                    pt_result = (ARITHEXPR, (SUB, pt_result, pt_right))
+                    ast_result = (SUB, ast_result, ast_right)
             else:
-                # subtraction expression
-                self.consume(OP_A)
-                pt_right, ast_right = self.term()
-                pt_result = (ARITHEXPR, (SUB, pt_result, pt_right))
-                ast_result = (SUB, ast_result, ast_right)
+                pt_result = (ARITHEXPR, pt_result)
+                ast_result = ast_result
 
         return (pt_result, ast_result)
     
@@ -424,11 +456,15 @@ class Parser:
         the 'x' and the '2 * y' are both terms.
         '''
         pt_result, ast_result = self.factor()
-        while (self.current_token and self.current_token.value == '*'):
-            op_token = self.consume(OP_A)
-            pt_right, ast_right = self.factor()
-            pt_result = (ARITHTERM, (MULT, pt_result, pt_right))
-            ast_result = (MULT, ast_result, ast_right)
+        if self.current_token:
+            if (self.current_token.value == '*'):
+                op_token = self.consume(OP_A)
+                pt_right, ast_right = self.factor()
+                pt_result = (ARITHTERM, (MULT, pt_result, pt_right))
+                ast_result = (MULT, ast_result, ast_right)
+            else:
+                pt_result = (ARITHTERM, pt_result)
+                ast_result = ast_result
         return (pt_result, ast_result)
     
     def factor(self):
@@ -474,12 +510,15 @@ class Parser:
         NOT[b], [b] are analogous to arithmetic factor.
         '''
         pt_result, ast_result = self.bool_term()
-        if (self.current_token
-               and (self.current_token.value == OR)):
-            self.consume(OR)
-            pt_right, ast_right = self.bool_term()
-            pt_result = (BOOLEXPR, (OR, pt_result, pt_right))
-            ast_result = (OR, ast_result, ast_right)
+        if (self.current_token):
+            if (self.current_token.value == OR):
+                self.consume(OR)
+                pt_right, ast_right = self.bool_term()
+                pt_result = (BOOLEXPR, (OR, pt_result, pt_right))
+                ast_result = (OR, ast_result, ast_right)
+            else:
+                pt_result = (BOOLEXPR, pt_result)
+                ast_result = ast_result
         return (pt_result, ast_result)
     
     def bool_term(self):
@@ -488,11 +527,15 @@ class Parser:
         bool_expr, bool_term, or bool_factor.
         '''
         pt_result, ast_result = self.bool_factor()
-        while (self.current_token and self.peek(AND)):
-            self.consume(AND)
-            pt_right, ast_right = self.bool_factor()
-            pt_result  = (BOOLTERM, (AND, pt_result, pt_right))
-            ast_result = (AND, ast_result, ast_right)
+        if self.current_token:
+            if self.peek(AND):
+                self.consume(AND)
+                pt_right, ast_right = self.bool_factor()
+                pt_result  = (BOOLTERM, (AND, pt_result, pt_right))
+                ast_result = (AND, ast_result, ast_right)
+            else:
+                pt_result = (BOOLTERM, pt_result)
+                ast_result = ast_result
         return (pt_result, ast_result)
     
     def bool_factor(self):
@@ -538,97 +581,3 @@ class Parser:
             pt_result = (BOOLFACT, (op, pt_left, pt_right))
             ast_result = (op, ast_left, ast_right)
             return (pt_result, ast_result)
-    
-    def ast_from_parse_tree(self, nested_tuple):
-        '''
-        Recursively produce a nested_tuple version of an abstract
-        syntax tree (AST) from the generated nested-tuple version of
-        the parse tree (PT). The AST is basically just a simplified
-        version of the PT.
-        This approach was chosen over trying to construct the PT and
-        AST in parallel, in part because it simplifies the code and
-        makes tweaks and modifications to the resulting AST easier.
-        The comments use 'node' language, but we're dealing just with
-        nested tuples instead of literal trees and tree nodes.
-        '''
-
-        # Interpret first element of a tuple as node's type.
-        # A node's _value_ may be more complicated.
-        node_type = nested_tuple[0]
-
-        # the remaining elements (if any) are the children,
-        # which themselves might be nested tuples
-        children = nested_tuple[1:]
-
-        # A dictionary to facilitate the choice of a 'value' for each
-        # node, which in turn will be used eventually as the label for
-        # the node in DOT language and visualization process. Most of
-        # the time it makes sense to let the AST use the same labels
-        # as found in the PT, but maybe abbreviate labels later (in
-        # the transformation to a Tree with TreeNodes) when visualizing
-        # the trees.
-        type_to_value = {
-            ADD:ADD, ASSIGN:ASSIGN, IF:IF, MULT:MULT, NOT:NOT,
-            PROG:PROG, SEQ:SEQ, SUB:SUB, WHILE:WHILE,
-            '<':'<', '>':'>', '<=':'<=', '>=':'>=', '=':'='
-        }
-
-        # here somewhere, if we have 'do', 'then', 'else' as node_type,
-        # we just want to return the "sequence" or perhaps single item
-        # that occurs in 2nd position.
-        # Perhaps simply returning nested_tuple[1]? Or … the transformed
-        # version of nested_tuple[1]
-        # if we hit (do, [...], od)
-        # if node_type in ['do', 'then', 'else']:
-        #     _seq_block = []
-        #     for instr in nested_tuple[1]:
-        #         _seq_block.append(self.ast_from_parse_tree(instr))
-        #     return _seq_block
-        # TESTING to avoid block just above
-        if node_type in ['do', 'then', 'else']:
-            node_type = 'seq'
-            children = (nested_tuple[1], )
-        # END TESTING
-
-        # Establish the current TreeNode
-        # current_node = TreeNode(type=node_type, value=type_to_value[node_type])
-        current_node = (type_to_value[node_type],)
-
-        # Then recursively convert and add children, with some
-        # specialization for various types.
-        for child in children:
-            if isinstance(child, tuple):
-                # if child is a var or int type, treat it like a leaf
-                if child[0] in ['var', 'int']:
-                    current_node += (child[1], )
-                else:
-                    # if a child is some other nested tuple
-                    child_node = self.ast_from_parse_tree(child)
-                    if child_node:
-                        current_node += (child_node, )
-            
-            elif isinstance(child, list):
-                # a list corresponds to sequence of stmts inside a while
-                # block, an if-true block, or if-else block.
-                _type = 'seq'
-                _value = type_to_value[_type]
-                _seq_block = []
-                for instr in child:
-                    _seq_block.append(self.ast_from_parse_tree(instr))
-                current_node += (_seq_block,)
-
-            elif child in ['(', ')', '[', ']', 'fi', 'od']:
-                # being explicit about this for clarity: simply
-                # not including redundant details in the AST
-                continue
-
-            else:
-                # child is a 'leaf' value, not a tuple
-                _type = child_tuple
-                print(f"_type = {_type}")
-                _value = type_to_value[_type]
-                print(f"_value = {_value}")
-                current_node.children.append(TreeNode(type=_type, value=_value))
-
-        return current_node
-
