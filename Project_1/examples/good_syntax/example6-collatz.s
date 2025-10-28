@@ -12,7 +12,6 @@ example6_collatz:
 
     # n := 
     ld t0, 0(sp)
-    addi sp, sp, 8
     sd t0, 8(a0)
 
     # literal = 0
@@ -21,7 +20,6 @@ example6_collatz:
 
     # steps := 
     ld t0, 0(sp)
-    addi sp, sp, 8
     sd t0, 40(a0)
 
     # While Statement
@@ -43,7 +41,6 @@ while_label_1:
     slt t0, t1, t0
     sd t0, 0(sp)
     ld t0, 0(sp)
-    addi sp, sp, 8
 
     beqz t0, end_label_1
 
@@ -55,7 +52,6 @@ while_label_1:
 
     # rem := 
     ld t0, 0(sp)
-    addi sp, sp, 8
     sd t0, 32(a0)
 
     # literal = 0
@@ -64,7 +60,6 @@ while_label_1:
 
     # quot := 
     ld t0, 0(sp)
-    addi sp, sp, 8
     sd t0, 24(a0)
 
     # While Statement
@@ -86,7 +81,6 @@ while_label_2:
     slt t0, t1, t0
     sd t0, 0(sp)
     ld t0, 0(sp)
-    addi sp, sp, 8
 
     beqz t0, end_label_2
 
@@ -108,7 +102,6 @@ while_label_2:
 
     # rem := 
     ld t0, 0(sp)
-    addi sp, sp, 8
     sd t0, 32(a0)
 
     # var quot
@@ -127,7 +120,6 @@ while_label_2:
 
     # quot := 
     ld t0, 0(sp)
-    addi sp, sp, 8
     sd t0, 24(a0)
 
     j while_label_2
@@ -152,7 +144,6 @@ end_label_2:
     seqz t0, t0
     sd t0, 0(sp)
     ld t0, 0(sp)
-    addi sp, sp, 8
 
     beqz t0, else_label_3
 
@@ -162,7 +153,6 @@ end_label_2:
 
     # n := 
     ld t0, 0(sp)
-    addi sp, sp, 8
     sd t0, 8(a0)
     j end_label_3
 
@@ -194,7 +184,6 @@ else_label_3:
 
     # n := 
     ld t0, 0(sp)
-    addi sp, sp, 8
     sd t0, 8(a0)
 
 end_label_3:
@@ -215,7 +204,6 @@ end_label_3:
 
     # steps := 
     ld t0, 0(sp)
-    addi sp, sp, 8
     sd t0, 40(a0)
 
     j while_label_1
@@ -229,7 +217,6 @@ end_label_1:
 
     # output := 
     ld t0, 0(sp)
-    addi sp, sp, 8
     sd t0, 16(a0)
 
     # Function epilogue

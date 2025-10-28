@@ -1,42 +1,138 @@
+.globl example13_fibonacci
 .text
-.globl generated_function
-generated_function:
+example13_fibonacci:
     # Function prologue
-    addi sp, sp, -16
-    sd ra, 8(sp)
-    sd fp, 0(sp)
-    addi fp, sp, 16
-    # Variable array pointer in a1
+    addi sp, sp, -8
+    # Variable array pointer in a0
 
-    li x8, 0
-    mv x9, x8
-    li x10, 1
-    mv x11, x10
-    li x12, 0
-    mv x13, x12
-label_1:
 
-    sub x15, x14, x13
-    seqz x15, x15
-    seqz a0, x15
-    beqz a0, label_2
+    # literal = 0
+    li t0, 0
+    sd t0, 0(sp)
 
-    add a0, x9, x11
-    sd a0, 32(a1)
-    mv x9, x11
-    ld a0, 32(a1)
-    mv x11, a0
-    li a0, 1
-    sub a0, x14, a0
-    mv x14, a0
-    li a0, 0
-    mv x13, a0
-    j label_1
-label_2:
+    # a := 
+    ld t0, 0(sp)
+    sd t0, 0(a0)
 
-    sd x9, 24(a1)
+    # literal = 1
+    li t0, 1
+    sd t0, 0(sp)
+
+    # b := 
+    ld t0, 0(sp)
+    sd t0, 8(a0)
+
+    # literal = 0
+    li t0, 0
+    sd t0, 0(sp)
+
+    # z := 
+    ld t0, 0(sp)
+    sd t0, 40(a0)
+
+    # While Statement
+while_label_1:
+
+    # Condition
+
+    # var n
+    ld t0, 16(a0)
+    sd t0, 0(sp)
+
+    # var z
+    ld t0, 40(a0)
+    sd t0, 8(sp)
+
+    # Equality
+    ld t1, 8(sp)
+    ld t0, 0(sp)
+    sub t0, t0, t1
+    seqz t0, t0
+    sd t0, 0(sp)
+
+    # NOT
+    ld t0, 0(sp)
+    seqz t0, t0
+    sd t0, 0(sp)
+    ld t0, 0(sp)
+
+    beqz t0, end_label_1
+
+    # Do
+
+    # var a
+    ld t0, 0(a0)
+    sd t0, 0(sp)
+
+    # var b
+    ld t0, 8(a0)
+    sd t0, 8(sp)
+
+    # Addition
+    ld t1, 8(sp)
+    ld t0, 0(sp)
+    add t0, t0, t1
+    sd t0, 0(sp)
+
+    # t := 
+    ld t0, 0(sp)
+    sd t0, 32(a0)
+
+    # var b
+    ld t0, 8(a0)
+    sd t0, 0(sp)
+
+    # a := 
+    ld t0, 0(sp)
+    sd t0, 0(a0)
+
+    # var t
+    ld t0, 32(a0)
+    sd t0, 0(sp)
+
+    # b := 
+    ld t0, 0(sp)
+    sd t0, 8(a0)
+
+    # var n
+    ld t0, 16(a0)
+    sd t0, 0(sp)
+
+    # literal = 1
+    li t0, 1
+    sd t0, 8(sp)
+
+    # Subtraction
+    ld t1, 8(sp)
+    ld t0, 0(sp)
+    sub t0, t0, t1
+    sd t0, 0(sp)
+
+    # n := 
+    ld t0, 0(sp)
+    sd t0, 16(a0)
+
+    # literal = 0
+    li t0, 0
+    sd t0, 0(sp)
+
+    # z := 
+    ld t0, 0(sp)
+    sd t0, 40(a0)
+
+    j while_label_1
+
+    # Od
+end_label_1:
+
+    # var a
+    ld t0, 0(a0)
+    sd t0, 0(sp)
+
+    # output := 
+    ld t0, 0(sp)
+    sd t0, 24(a0)
+
     # Function epilogue
-    ld ra, 8(sp)
-    ld fp, 0(sp)
-    addi sp, sp, 16
+    addi sp, sp, 8
     ret
