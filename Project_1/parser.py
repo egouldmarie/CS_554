@@ -144,10 +144,8 @@ class Parser:
         of statements.
         '''
         
-        # _stmts = self.statement_seq()
         pt_stmts, ast_stmts = self.statement_seq()
         self.program_pt = ('prog',) + (pt_stmts,)
-        # self.program_ast = ('prog',) + (ast_stmts,)
         self.program_ast = ast_stmts
 
         if self.current_token_index < len(self.tokens) - 1:
@@ -206,27 +204,7 @@ class Parser:
                     "Parser.statement() method encountered a problematic "
                     f"statement on line {_line}. Last token processed "
                     f"was '{_value}' on line {_line}.")
-        
-        # Process subsequent statement(s) if we see seq op ';' .
-        # while self.peek(SEQ):
-        #     self.consume(SEQ)
-        #     pt_stmt, ast_stmt = self.statement_seq()
-        #     if pt_stmt:
-        #         pt_statement_block = pt_statement_block + (pt_stmt,)
-        #         # if ast_stmt != (SKIP,):
-        #         # ast_statement_block.append(ast_stmt)
-        #         ast_statement_block = ast_statement_block + (ast_stmt,)
-        #     else:
-        #         _last_token = self.tokens[self.current_token_index]
-        #         _value = _last_token.value
-        #         _line = _last_token.line
-        #         raise SyntaxError(
-        #             "Parser.statement() discovered a missing or "
-        #             f"problematic statement on line {_line}. "
-        #             "Last token processed "
-        #             f"was '{_value}' on line {_line}."
-        #         )
-        
+                
         if self.peek(SEQ):
 
             # Process subsequent statement(s) if we see seq op ';'
