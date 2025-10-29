@@ -1,8 +1,8 @@
 """
 filename:     compiler.py
-authors:      Emma Gould, Nathan Rowe, Qinghong Shao, Warren Craft
+authors:      Jaime Gould, Qinghong Shao, Warren Craft
 created:      2025-10-03
-last updated: 2025-10-24
+last updated: 2025-10-29
 description:  Coordinates actions of Scanner, Parser, and
               RISC_V_CodeGenerator classes for the compiling of
               WHILE language programs, including the construction
