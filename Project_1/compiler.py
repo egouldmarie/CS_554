@@ -185,13 +185,9 @@ if __name__ == "__main__":
 
     with open(c_file_name, 'w') as f:
         f.write(c_code)
-    print(f"\nC code saved to: {c_file_name}")
-
-    print("\n")
+    print(f"\nC code saved to: {c_file_name}\n")
 
     try:
         subprocess.run(["gcc", "-o", compiled_file, c_file_name, risc_v_file], check=True, capture_output=True)
     except:
-        print("Unable to compile Assembly and C files on this architecture.")
-
-    print("\n")
+        print("Unable to compile Assembly and C files on this architecture.\n")
