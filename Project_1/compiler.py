@@ -10,9 +10,9 @@ description:  Coordinates actions of Scanner, Parser, and
               Created for CS 554 (Compiler Construction) at UNM.
 """
 
-import sys
-import time
+import os
 import argparse
+import subprocess
 
 from parser import Parser
 from scanner import Tokenize
@@ -105,12 +105,16 @@ if __name__ == "__main__":
     print("-" * 70)
     print(assembly)
     print("-" * 70)
-    
+
     # Save assembly to file
-    output_file = args.filename.replace('.while', '.s')
-    with open(output_file, 'w') as f:
+    idx = args.filename.rfind('/')+1
+    compile_path = args.filename[:idx] + "compiled/"
+    os.makedirs(os.path.dirname(compile_path), exist_ok=True)
+    compiled_file = (compile_path + args.filename[idx:]).replace("while", "")
+    risc_v_file = compiled_file + ".s"
+    with open(risc_v_file, 'w') as f:
         f.write(assembly)
-    print(f"\nAssembly code saved to: {output_file}")
+    print(f"\nAssembly code saved to: {risc_v_file}")
     
     # ======================================== #
     # Construct the associated C code file     #
@@ -166,9 +170,16 @@ if __name__ == "__main__":
           +  "}\n"
     )
 
-    c_file_name = args.filename.replace('.while', '.c')
+    c_file_name = compiled_file + ".c"
     with open(c_file_name, 'w') as f:
         f.write(c_code)
     print(f"\nC code saved to: {c_file_name}")
+
+    print("\n")
+
+    try:
+        subprocess.run(["gcc", "-o", compiled_file, c_file_name, risc_v_file], check=True, capture_output=True)
+    except:
+        print("Unable to compile Assembly and C files on this architecture.")
 
     print("\n")
