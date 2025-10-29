@@ -32,6 +32,25 @@ if __name__ == "__main__":
                            )
     args = argparser.parse_args()
 
+    # function, file, and directory names
+    file_name = args.filename.split('/')[-1].replace('.while', '')
+    function_name = file_name.replace('-', '_').replace(' ', '')
+
+    idx = args.filename.rfind('/')+1
+
+    tree_path = args.filename[:idx] + "trees/"
+    os.makedirs(os.path.dirname(tree_path), exist_ok=True)
+
+    ast_file = tree_path+file_name+"_ast_tree.dot"
+    parse_file = tree_path+file_name+"_parse_tree.dot"
+
+    compile_path = args.filename[:idx] + "compiled/"
+    os.makedirs(os.path.dirname(compile_path), exist_ok=True)
+
+    compiled_file = (compile_path + args.filename[idx:]).replace("while", "")
+    risc_v_file = compiled_file + ".s"
+    c_file_name = compiled_file + ".c"
+
     # read in file text
     with open(args.filename, "r") as f:
         whileCode = f.read()
@@ -82,7 +101,7 @@ if __name__ == "__main__":
             convert_nested_tuple_parse_tree_to_tree(parse_tree))
     explicit_parse_tree = Tree(explicit_parse_tree_root)
     generate_dot_from_tree(
-            explicit_parse_tree.root, filename='parse_tree.dot')
+            explicit_parse_tree.root, filename=parse_file)
 
     # ============================ #
     # Generate graphic rep of AST  #
@@ -90,7 +109,7 @@ if __name__ == "__main__":
     TreeNode._next_id = 0  # reset id numbering to keep ids small
     explicit_ast_root = convert_nested_tuple_ast_to_tree(ast)
     explicit_ast = Tree(explicit_ast_root)
-    generate_dot_from_tree(explicit_ast.root, filename='ast_tree.dot')
+    generate_dot_from_tree(explicit_ast.root, filename=ast_file)
     print(f"View the '.dot' files in Graphviz or VSCode to see the "
            "resulting abstract syntax tree (AST).")
 
@@ -98,7 +117,6 @@ if __name__ == "__main__":
     # Generate, display, and save to .s file   #
     # the RISC-V assembly code                 #
     # ======================================== #
-    function_name = args.filename.split('/')[-1].replace('.while', '').replace('-', '_').replace(' ', '')
     codegen = RISC_V_CodeGenerator(function_name)
     assembly = codegen.generate(ast)
     print("\nRISC-V Assembly Code:")
@@ -107,11 +125,6 @@ if __name__ == "__main__":
     print("-" * 70)
 
     # Save assembly to file
-    idx = args.filename.rfind('/')+1
-    compile_path = args.filename[:idx] + "compiled/"
-    os.makedirs(os.path.dirname(compile_path), exist_ok=True)
-    compiled_file = (compile_path + args.filename[idx:]).replace("while", "")
-    risc_v_file = compiled_file + ".s"
     with open(risc_v_file, 'w') as f:
         f.write(assembly)
     print(f"\nAssembly code saved to: {risc_v_file}")
@@ -170,7 +183,6 @@ if __name__ == "__main__":
           +  "}\n"
     )
 
-    c_file_name = compiled_file + ".c"
     with open(c_file_name, 'w') as f:
         f.write(c_code)
     print(f"\nC code saved to: {c_file_name}")
