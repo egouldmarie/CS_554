@@ -47,7 +47,7 @@ if __name__ == "__main__":
     compile_path = args.filename[:idx] + "compiled/"
     os.makedirs(os.path.dirname(compile_path), exist_ok=True)
 
-    compiled_file = (compile_path + args.filename[idx:]).replace("while", "")
+    compiled_file = (compile_path + args.filename[idx:]).replace(".while", "")
     risc_v_file = compiled_file + ".s"
     c_file_name = compiled_file + ".c"
 
@@ -189,5 +189,6 @@ if __name__ == "__main__":
 
     try:
         subprocess.run(["gcc", "-o", compiled_file, c_file_name, risc_v_file], check=True, capture_output=True)
+        print(f"Compiled Assembly and C files successfully.\nExecutable saved to: {compiled_file}\n")
     except:
         print("Unable to compile Assembly and C files on this architecture.\n")
