@@ -353,7 +353,7 @@ def generate_dot_from_tree(root_node, filename="tree.dot"):
         dot_content.append(f'    "{node.id}" [label="{node.value}"];')
         for child in node.children:
             if child.l is not None:
-                dot_content.append(f'    "{node.id}" -> "{child.id}" [label="{child.l}"];')
+                dot_content.append(f'    "{node.id}" -> "{child.id}" [label=" {child.l}"];')
             else:
                 dot_content.append(f'    "{node.id}" -> "{child.id}";')
             _traverse_and_add_nodes(child)
