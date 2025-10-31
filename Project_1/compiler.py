@@ -18,7 +18,8 @@ from parser import Parser
 from scanner import Tokenize
 from codegen import RISC_V_CodeGenerator
 from trees import (
-    Tree, TreeNode, generate_dot_from_tree,
+    Tree, TreeNode,
+    decorate_ast, generate_dot_from_tree,
     convert_nested_tuple_parse_tree_to_tree,
     convert_nested_tuple_ast_to_tree)
 
@@ -109,6 +110,7 @@ if __name__ == "__main__":
     TreeNode._next_id = 0  # reset id numbering to keep ids small
     explicit_ast_root = convert_nested_tuple_ast_to_tree(ast)
     explicit_ast = Tree(explicit_ast_root)
+    decorate_ast(explicit_ast.root)
     generate_dot_from_tree(explicit_ast.root, filename=ast_file)
     print(f"View the '.dot' files in Graphviz or VSCode to see the "
            "resulting abstract syntax tree (AST).")

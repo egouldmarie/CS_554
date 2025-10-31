@@ -75,6 +75,7 @@ class TreeNode:
         '''
         self.id = TreeNode._next_id
         TreeNode._next_id += 1
+        self.l = None
         self.type = None
         self.value = None
         self.children = []
@@ -309,6 +310,31 @@ def convert_nested_tuple_ast_to_tree(nested_tuple):
 
     return current_node
 
+def decorate_ast(root_node):
+    '''
+    Given a Tree (consisting of a tree of TreeNodes), add unique
+    labels to assignment nodes, skip nodes, if conditions, and
+    while conditions.
+    '''
+    global label
+    globals()['label'] = 0
+    def _traverse_and_add_nodes(node):
+        if node.value in ['WHILE', 'IF']:
+            node.children[0].l = globals()['label']
+            globals()['label'] = globals()['label']+1
+            for child in node.children:
+                _traverse_and_add_nodes(child)
+        elif node.type in [SKIP, ASSIGN]:
+            node.l = globals()['label']
+            globals()['label'] = globals()['label']+1
+        elif node.type in [SEQ]:
+            for child in node.children:
+                _traverse_and_add_nodes(child)
+    _traverse_and_add_nodes(root_node)
+
+#superscript = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉']
+#def number_to_superscript(num):
+#    return ''.join([superscript[int(d)] for d in str(num)])
 
 def generate_dot_from_tree(root_node, filename="tree.dot"):
     '''
@@ -326,7 +352,10 @@ def generate_dot_from_tree(root_node, filename="tree.dot"):
     def _traverse_and_add_nodes(node):
         dot_content.append(f'    "{node.id}" [label="{node.value}"];')
         for child in node.children:
-            dot_content.append(f'    "{node.id}" -> "{child.id}";')
+            if child.l is not None:
+                dot_content.append(f'    "{node.id}" -> "{child.id}" [label="{child.l}"];')
+            else:
+                dot_content.append(f'    "{node.id}" -> "{child.id}";')
             _traverse_and_add_nodes(child)
 
     _traverse_and_add_nodes(root_node)
