@@ -193,7 +193,7 @@ class RISC_V_CodeGenerator:
         
         var_offset = self.variables.index(var_name) * 8
         self.gen(f"    sd t0, {var_offset}(a0)")        # copy value from temporary register (t0) into argument memory
-        self.gen(f"    # ]{l}")
+        self.gen(f"    # ]{self.number_to_subscript(l)}")
 
     def _generate_if_statement(self, stmt):
         """
@@ -210,7 +210,7 @@ class RISC_V_CodeGenerator:
         l = self.l
         self.l = self.l+1
         self._generate_expression(condition)
-        self.gen(f"    # ]{l}")
+        self.gen(f"    # ]{self.number_to_subscript(l)}")
         self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
         
         # Generate labels
@@ -257,7 +257,7 @@ class RISC_V_CodeGenerator:
         l = self.l
         self.l = self.l+1
         self._generate_expression(condition)
-        self.gen(f"    # ]{l}")
+        self.gen(f"    # ]{self.number_to_subscript(l)}")
         self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
         
         # Conditional jump
@@ -334,3 +334,7 @@ class RISC_V_CodeGenerator:
         """
         self.label_counter += 1
         return f"label_{self.label_counter}"
+    
+    def number_to_subscript(num):
+        subscript = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉']
+        return ''.join([subscript[int(d)] for d in str(num)])

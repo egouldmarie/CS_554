@@ -332,10 +332,6 @@ def decorate_ast(root_node):
                 _traverse_and_add_nodes(child)
     _traverse_and_add_nodes(root_node)
 
-#superscript = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉']
-#def number_to_superscript(num):
-#    return ''.join([superscript[int(d)] for d in str(num)])
-
 def generate_dot_from_tree(root_node, filename="tree.dot"):
     '''
     Given a Tree (consisting of a tree of TreeNodes), construct the
