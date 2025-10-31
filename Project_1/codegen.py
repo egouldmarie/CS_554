@@ -30,6 +30,8 @@ class RISC_V_CodeGenerator:
         self.variables = []     # List of all variables
         self.memory_offset = 0  # Memory offset counter
 
+        self.l = 0
+
         #self.max_branch = 1
         self.max_branch = 0
 
@@ -147,13 +149,13 @@ class RISC_V_CodeGenerator:
         """
         Generate function epilogue
         """
-        self.gen("")
+        #self.gen("")
         self.gen("    # Function epilogue")
         #self.gen("    ld ra, 8(sp)")
         #self.gen("    ld fp, 0(sp)")
         self.gen(f"    addi sp, sp, {8*self.max_branch}")
         self.gen("    ret")
-        self.gen("")
+        #self.gen("")
     
     def _generate_statement(self, stmt):
         """
@@ -169,7 +171,9 @@ class RISC_V_CodeGenerator:
         elif stmt[0] == "while":
             self._generate_while_statement(stmt)
         elif stmt[0] == "skip":
-            pass
+            self.gen(f"    # [skip]{self.l}")
+            self.l = self.l+1
+            #pass
     
     def _generate_assignment(self, stmt):
         """
@@ -179,13 +183,17 @@ class RISC_V_CodeGenerator:
         expr = stmt[2]
         
         # Generate expression code
+        self.gen("    # [")
+        l = self.l
+        self.l = self.l+1
         self._generate_expression(expr)
-        self.gen("")
-        self.gen(f"    # {var_name} := ")
+        #self.gen("")
+        #self.gen(f"    # {var_name} := ")
         self.gen(f"    ld t0, 0(sp)")                   # load value from stack into a temporary register (t0)
         
         var_offset = self.variables.index(var_name) * 8
         self.gen(f"    sd t0, {var_offset}(a0)")        # copy value from temporary register (t0) into argument memory
+        self.gen(f"    # ]{l}")
 
     def _generate_if_statement(self, stmt):
         """
@@ -196,9 +204,13 @@ class RISC_V_CodeGenerator:
         else_block = stmt[3]
         
         # Generate condition code
-        self.gen("")
-        self.gen("    # If Statement")
+        #self.gen("")
+        #self.gen("    # If Statement")
+        self.gen("    # [")
+        l = self.l
+        self.l = self.l+1
         self._generate_expression(condition)
+        self.gen(f"    # ]{l}")
         self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
         
         # Generate labels
@@ -207,20 +219,20 @@ class RISC_V_CodeGenerator:
         end_label = "end_" + label
         
         # Conditional jump
-        self.gen("")
+        #self.gen("")
         self.gen(f"    beqz t0, {else_label}")
         
         # true block
         self._generate_statement(true_block)
         
         self.gen(f"    j {end_label}")
-        self.gen("")
+        #self.gen("")
         self.gen(f"{else_label}:")
         
         # else block
         self._generate_statement(else_block)
         
-        self.gen("")
+        #self.gen("")
         self.gen(f"{end_label}:")
     
     def _generate_while_statement(self, stmt):
@@ -235,29 +247,30 @@ class RISC_V_CodeGenerator:
         loop_label = "while_" + label
         end_label = "end_" + label
         
-        self.gen("")
-        self.gen(f"    # While Statement")
+        #self.gen("")
+        #self.gen(f"    # While Statement")
         self.gen(f"{loop_label}:")
         
         # Generate condition code
-        self.gen("")
-        self.gen(f"    # Condition")
+        #self.gen(f"    # Condition")
+        self.gen("    # [")
+        l = self.l
+        self.l = self.l+1
         self._generate_expression(condition)
+        self.gen(f"    # ]{l}")
         self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
         
         # Conditional jump
-        self.gen("")
+        #self.gen("")
         self.gen(f"    beqz t0, {end_label}")
         
         # Do
-        self.gen("")
-        self.gen(f"    # Do")
+        #self.gen(f"    # Do")
         self._generate_statement(body)
 
-        self.gen("")        
+        #self.gen("")        
         self.gen(f"    j {loop_label}")
-        self.gen("")
-        self.gen(f"    # Od")
+        #self.gen(f"    # Od")
         self.gen(f"{end_label}:")
 
     def _generate_expression(self, expr, branch=0):
@@ -267,22 +280,19 @@ class RISC_V_CodeGenerator:
         if expr[0] == "int":
             # Integer constant
             value = expr[1]
-            self.gen(f"")
-            self.gen(f"    # literal = {value}")
+            #self.gen(f"    # literal = {value}")
             self.gen(f"    li t0, {value}")             # put value into a temporary register (t0)
             self.gen(f"    sd t0, {8*branch}(sp)")       # copy value from temp register into stack
         elif expr[0] == "var":
             # Variable
             var_name = expr[1]
-            self.gen(f"")
-            self.gen(f"    # var {var_name}")
+            #self.gen(f"    # var {var_name}")
             var_offset = self.variables.index(var_name) * 8
             self.gen(f"    ld t0, {var_offset}(a0)")    # load value into a temporary register (t0)
             self.gen(f"    sd t0, {8*branch}(sp)")       # copy value from temp register into stack
         elif expr[0] in ["true", "false"]:
             # Boolean constant
-            self.gen(f"")
-            self.gen(f"    # boolean constant = {expr[0]}")
+            #self.gen(f"    # boolean constant = {expr[0]}")
             if expr[0] == "true":
                 self.gen(f"    li t0, 1")               # put 1 into a temporary register (t0)
                 self.gen(f"    sd t0, {8*branch}(sp)")   # copy value from temp register into stack
@@ -291,8 +301,7 @@ class RISC_V_CodeGenerator:
         elif expr[0] in ["add", "sub", "mult", "=", "<", ">", "<=", ">=", "and", "or"]:
             self._generate_expression(expr[1], branch)
             self._generate_expression(expr[2], branch+1)
-            self.gen(f"")
-            self.gen(self.comment_map[expr[0]])
+            #self.gen(self.comment_map[expr[0]])
             self.gen(f"    ld t1, {8*(branch+1)}(sp)")   # load value from stack into a temporary register (t1)
             self.gen(f"    ld t0, {8*branch}(sp)")       # load value from stack into a temporary register (t0)
 
@@ -301,8 +310,7 @@ class RISC_V_CodeGenerator:
         elif expr[0] == "not":
             # Logical NOT (Unary Operator)
             self._generate_expression(expr[1], branch)
-            self.gen(f"")
-            self.gen(f"    # NOT")
+            #self.gen(f"    # NOT")
             self.gen(f"    ld t0, {8*branch}(sp)")
 
             self.gen(f"    seqz t0, t0")
@@ -326,28 +334,3 @@ class RISC_V_CodeGenerator:
         """
         self.label_counter += 1
         return f"label_{self.label_counter}"
-
-# Test function
-def test_improved_generator():
-    """
-    Test improved code generator
-    """
-    sample_ast = [
-        ("assign", ("var", "x"), ("int", 5)),
-        ("assign", ("var", "y"), ("add", ("var", "x"), ("int", 3))),
-        ("while", (">", ("var", "x"), ("int", 0)), [
-            ("assign", ("var", "x"), ("sub", ("var", "x"), ("int", 1)))
-        ])
-    ]
-    
-    generator = RISC_V_CodeGenerator()
-    assembly = generator.generate(sample_ast)
-    
-    print("Improved RISC-V Assembly Code:")
-    print("=" * 50)
-    print(assembly)
-    print("\nVariables:", generator.variables)
-    print("Variable map:", generator.var_map)
-
-if __name__ == "__main__":
-    test_improved_generator()
