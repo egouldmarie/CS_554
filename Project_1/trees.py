@@ -28,7 +28,7 @@ NEWL      = "newline"
 NOT       = "not"
 OD        = "od"
 OP_A      = "op_a"
-OP_R      = "op_r"
+OP_R      = ["=", "<", ">", "<=", ">="]
 OR        = "or"
 PARENS    = 'parens'
 PROG      = 'prog'
@@ -361,3 +361,51 @@ def generate_dot_from_tree(root_node, filename="tree.dot"):
         f.write("\n".join(dot_content))
 
     print(f"DOT file '{filename}' generated successfully!")
+
+def pretty_format(node, indent=0, output=""):
+    '''
+    Given a Tree (consisting of a tree of TreeNodes), pretty
+    print the corresponding source program.
+    '''
+    if node.type == SEQ:
+        if node.l is not None:
+            output = output+"{--[--}"
+        output = pretty_format(node.children[0], indent, output)
+        output = output+f";\n"
+        output = pretty_format(node.children[1], indent, output)
+    elif node.type == ASSIGN:
+        output = output+f"{("   "*indent)}"
+        if node.l is not None:
+            output = output+"{--[--}"
+        output = pretty_format(node.children[0], indent, output)
+        output = output+f" {str(node.value)} "
+        output = pretty_format(node.children[1], indent, output)
+    elif node.type in ([ADD, AND, MULT, OR, SUB]+OP_R):
+        if node.l is not None:
+            output = output+"{--[--}"
+        output = pretty_format(node.children[0], indent, output)
+        output = output+f" {str(node.value)} "
+        output = pretty_format(node.children[1], indent, output)
+    elif node.type == WHILE:
+        output = output+f"{"   "*indent}while "
+        output = pretty_format(node.children[0], indent+1, output)
+        output = output+" do\n"
+        output = pretty_format(node.children[1], indent+1, output)
+        output = output+f"\n{"   "*indent}od"
+    elif node.type == IF:
+        output = output+f"{"   "*indent}if "
+        output = pretty_format(node.children[0], indent+1, output)
+        output = output+" then\n"
+        output = pretty_format(node.children[1], indent+1, output)
+        output = output+f"\n{"   "*indent}else\n"
+        output = pretty_format(node.children[2], indent+1, output)
+        output = output+f"\n{"   "*indent}fi"
+    else:
+        if node.l is not None:
+            output = output+f"{"   "*indent}"+"{--[--}"
+        output = output+str(node.value)
+    
+    if node.l is not None:
+        output = output+"{--"+f"]{node.l}"+"--}"
+
+    return output
