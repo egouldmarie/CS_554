@@ -183,9 +183,9 @@ class RISC_V_CodeGenerator:
         expr = stmt[2]
         
         # Generate expression code
-        self.gen("    # [")
-        l = self.l
-        self.l = self.l+1
+        #self.gen("    # [")
+        #l = self.l
+        #self.l = self.l+1
         self._generate_expression(expr)
         #self.gen("")
         #self.gen(f"    # {var_name} := ")
@@ -193,7 +193,7 @@ class RISC_V_CodeGenerator:
         
         var_offset = self.variables.index(var_name) * 8
         self.gen(f"    sd t0, {var_offset}(a0)")        # copy value from temporary register (t0) into argument memory
-        self.gen(f"    # ]{l}")
+        #self.gen(f"    # ]{l}")
 
     def _generate_if_statement(self, stmt):
         """
@@ -206,11 +206,11 @@ class RISC_V_CodeGenerator:
         # Generate condition code
         #self.gen("")
         #self.gen("    # If Statement")
-        self.gen("    # [")
-        l = self.l
-        self.l = self.l+1
+        #self.gen("    # [")
+        #l = self.l
+        #self.l = self.l+1
         self._generate_expression(condition)
-        self.gen(f"    # ]{l}")
+        #self.gen(f"    # ]{l}")
         self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
         
         # Generate labels
@@ -253,11 +253,11 @@ class RISC_V_CodeGenerator:
         
         # Generate condition code
         #self.gen(f"    # Condition")
-        self.gen("    # [")
-        l = self.l
-        self.l = self.l+1
+        #self.gen("    # [")
+        #l = self.l
+        #self.l = self.l+1
         self._generate_expression(condition)
-        self.gen(f"    # ]{l}")
+        #self.gen(f"    # ]{l}")
         self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
         
         # Conditional jump

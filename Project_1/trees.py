@@ -346,12 +346,12 @@ def generate_dot_from_tree(root_node, filename="tree.dot"):
     dot_content = ["digraph Tree {"]
 
     def _traverse_and_add_nodes(node):
-        dot_content.append(f'    "{node.id}" [label="{node.value}"];')
+        if node.l is not None:
+            dot_content.append(f'    "{node.id}" [label="{node.value}\n{node.l}"];')
+        else:
+            dot_content.append(f'    "{node.id}" [label="{node.value}"];')
         for child in node.children:
-            if child.l is not None:
-                dot_content.append(f'    "{node.id}" -> "{child.id}" [label=" {child.l}"];')
-            else:
-                dot_content.append(f'    "{node.id}" -> "{child.id}";')
+            dot_content.append(f'    "{node.id}" -> "{child.id}";')
             _traverse_and_add_nodes(child)
 
     _traverse_and_add_nodes(root_node)
