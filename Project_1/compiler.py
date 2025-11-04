@@ -42,8 +42,12 @@ if __name__ == "__main__":
     tree_path = args.filename[:idx] + "trees/"
     os.makedirs(os.path.dirname(tree_path), exist_ok=True)
 
+    decorated_tree_path = args.filename[:idx] + "trees/decorated/"
+    os.makedirs(os.path.dirname(decorated_tree_path), exist_ok=True)
+
     ast_file = tree_path+file_name+"_ast_tree.dot"
     parse_file = tree_path+file_name+"_parse_tree.dot"
+    decorated_ast_file = decorated_tree_path+file_name+"_ast_tree.dot"
 
     compile_path = args.filename[:idx] + "compiled/"
     os.makedirs(os.path.dirname(compile_path), exist_ok=True)
@@ -110,8 +114,9 @@ if __name__ == "__main__":
     TreeNode._next_id = 0  # reset id numbering to keep ids small
     explicit_ast_root = convert_nested_tuple_ast_to_tree(ast)
     explicit_ast = Tree(explicit_ast_root)
-    decorate_ast(explicit_ast.root)
     generate_dot_from_tree(explicit_ast.root, filename=ast_file)
+    decorate_ast(explicit_ast.root)
+    generate_dot_from_tree(explicit_ast.root, filename=decorated_ast_file)
     print(f"View the '.dot' files in Graphviz or VSCode to see the "
            "resulting abstract syntax tree (AST).")
 
