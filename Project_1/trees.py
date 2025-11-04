@@ -368,21 +368,21 @@ def pretty_format(node, indent=0, output=""):
     print the corresponding source program.
     '''
     if node.type == SEQ:
-        if node.l is not None:
-            output = output+"{--[--}"
+        #if node.l is not None:
+        #    output = output+"{--[--}"
         output = pretty_format(node.children[0], indent, output)
         output = output+f";\n"
         output = pretty_format(node.children[1], indent, output)
     elif node.type == ASSIGN:
         output = output+f"{("   "*indent)}"
-        if node.l is not None:
-            output = output+"{--[--}"
+        #if node.l is not None:
+        #    output = output+"{--[--}"
         output = pretty_format(node.children[0], indent, output)
         output = output+f" {str(node.value)} "
         output = pretty_format(node.children[1], indent, output)
     elif node.type in ([ADD, AND, MULT, OR, SUB]+OP_R):
-        if node.l is not None:
-            output = output+"{--[--}"
+        #if node.l is not None:
+        #    output = output+"{--[--}"
         output = pretty_format(node.children[0], indent, output)
         output = output+f" {str(node.value)} "
         output = pretty_format(node.children[1], indent, output)
@@ -400,12 +400,14 @@ def pretty_format(node, indent=0, output=""):
         output = output+f"\n{"   "*indent}else\n"
         output = pretty_format(node.children[2], indent+1, output)
         output = output+f"\n{"   "*indent}fi"
+    elif node.type == SKIP:
+        output = output+f"{"   "*indent}"+str(node.value)
     else:
-        if node.l is not None:
-            output = output+f"{"   "*indent}"+"{--[--}"
+        #if node.l is not None:
+        #    output = output+f"{"   "*indent}"+"{--[--}"
         output = output+str(node.value)
     
     if node.l is not None:
-        output = output+"{--"+f"]{node.l}"+"--}"
+        output = output+" {- LABEL "+f"{node.l}"+" -}"
 
     return output
