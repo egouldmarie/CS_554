@@ -19,7 +19,8 @@ from scanner import Tokenize
 from codegen import RISC_V_CodeGenerator
 from trees import (
     Tree, TreeNode,
-    decorate_ast, pretty_format, generate_dot_from_tree,
+    decorate_ast, #pretty_format,
+    generate_dot_from_tree,
     convert_nested_tuple_parse_tree_to_tree,
     convert_nested_tuple_ast_to_tree)
 
@@ -85,7 +86,7 @@ if __name__ == "__main__":
     #  parse tree (PT) and abstract    #
     #  syntax tree (AST)               #
     # ================================ #
-    parse_tree, ast = parser.parse()
+    parse_tree, ast, ast_2 = parser.parse()
 
     print("\nParse Tree (PT):")
     print("-" * 70)
@@ -115,12 +116,15 @@ if __name__ == "__main__":
     explicit_ast_root = convert_nested_tuple_ast_to_tree(ast)
     explicit_ast = Tree(explicit_ast_root)
     generate_dot_from_tree(explicit_ast.root, filename=ast_file)
+
+    generate_dot_from_tree(ast_2, filename="ast_2.dot")
+
     decorate_ast(explicit_ast.root)
     generate_dot_from_tree(explicit_ast.root, filename=decorated_ast_file)
     print(f"View the '.dot' files in Graphviz or VSCode to see the "
            "resulting abstract syntax tree (AST).")
 
-    print(pretty_format(explicit_ast_root))
+    # print(pretty_format(explicit_ast_root))
 
     # ======================================== #
     # Generate, display, and save to .s file   #
