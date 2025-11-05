@@ -108,36 +108,22 @@ if __name__ == "__main__":
     # ============================ #
     #  Generate graphic rep of PT  #
     # ============================ #
-    # TreeNode._next_id = 0
-    # explicit_parse_tree_root = (
-    #         convert_nested_tuple_parse_tree_to_tree(parse_tree))
-    # explicit_parse_tree = Tree(explicit_parse_tree_root)
-    # generate_dot_from_tree(
-    #         explicit_parse_tree.root, filename=parse_file)
 
-    generate_dot_from_tree(parse_tree, filename="parse_tree.dot")
+    generate_dot_from_tree(parse_tree, filename=parse_file)
 
     # ============================ #
     # Generate graphic rep of AST  #
     # ============================ #
-    # TreeNode._next_id = 0  # reset id numbering to keep ids small
-    # explicit_ast_root = convert_nested_tuple_ast_to_tree(ast)
-    # explicit_ast = Tree(explicit_ast_root)
-    # generate_dot_from_tree(explicit_ast.root, filename=ast_file)
 
-    generate_dot_from_tree(ast, filename="ast.dot")
+    generate_dot_from_tree(ast, filename=ast_file)
 
-    # decorate_ast(explicit_ast.root)
     decorate_ast(ast)
-    # generate_dot_from_tree(explicit_ast.root, filename=decorated_ast_file)
     generate_dot_from_tree(ast, filename=decorated_ast_file)
 
-    decorate_ast(ast_2)
-    generate_dot_from_tree(ast_2, filename=decorated_ast_file)
     print(f"View the '.dot' files in Graphviz or VSCode to see the "
            "resulting abstract syntax tree (AST).")
 
-    labeled_code = insert_labels(ast_2, whileCode)[0]
+    labeled_code = insert_labels(ast, whileCode)[0]
     print(labeled_code)
     with open(labeled_source, 'w') as f:
         f.write(labeled_code)
@@ -148,7 +134,7 @@ if __name__ == "__main__":
     # the RISC-V assembly code                 #
     # ======================================== #
     codegen = RISC_V_CodeGenerator(function_name)
-    assembly = codegen.generate(ast_2)
+    assembly = codegen.generate(ast)
     print("\nRISC-V Assembly Code:")
     print("-" * 70)
     print(assembly)
