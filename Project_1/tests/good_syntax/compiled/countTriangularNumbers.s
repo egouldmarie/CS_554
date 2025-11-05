@@ -81,7 +81,7 @@ while_label_2:
     sd t0, 48(a0)
     j end_label_3
 else_label_3:
-    # [skip]0
+    # skip
 end_label_3:
     ld t0, 32(a0)
     sd t0, 0(sp)
@@ -118,7 +118,7 @@ end_label_2:
     sd t0, 0(a0)
     j end_label_4
 else_label_4:
-    # [skip]1
+    # skip
 end_label_4:
     li t0, 0
     sd t0, 0(sp)

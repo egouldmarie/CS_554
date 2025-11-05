@@ -19,7 +19,7 @@ from scanner import Tokenize
 from codegen import RISC_V_CodeGenerator
 from trees import (
     Tree, TreeNode,
-    decorate_ast, pretty_format, generate_dot_from_tree,
+    decorate_ast, insert_labels, generate_dot_from_tree,
     convert_nested_tuple_parse_tree_to_tree,
     convert_nested_tuple_ast_to_tree)
 
@@ -77,14 +77,14 @@ if __name__ == "__main__":
     for token in Tokenize(whileCode):
         print(token)
         tokens.append(token)
-    
+
     print("-" * 70)
 
     # ================================ #
     #  Init a Parser with tokens       #
     # ================================ #
     parser = Parser(tokens)
-    
+
     # ================================ #
     #  Generate and display the        #
     #  parse tree (PT) and abstract    #
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     # explicit_parse_tree = Tree(explicit_parse_tree_root)
     # generate_dot_from_tree(
     #         explicit_parse_tree.root, filename=parse_file)
-    
+
     generate_dot_from_tree(parse_tree, filename="parse_tree.dot")
 
     # ============================ #
@@ -132,12 +132,13 @@ if __name__ == "__main__":
     # generate_dot_from_tree(explicit_ast.root, filename=decorated_ast_file)
     generate_dot_from_tree(ast, filename=decorated_ast_file)
 
+    decorate_ast(ast_2)
+    generate_dot_from_tree(ast_2, filename=decorated_ast_file)
     print(f"View the '.dot' files in Graphviz or VSCode to see the "
            "resulting abstract syntax tree (AST).")
 
-    # labeled_code = pretty_format(explicit_ast_root)
-    labeled_code = pretty_format(ast)
-    #print(labeled_code)
+    labeled_code = insert_labels(ast_2, whileCode)[0]
+    print(labeled_code)
     with open(labeled_source, 'w') as f:
         f.write(labeled_code)
     print(f"\nLabeled code saved to: {labeled_source}\n")
@@ -147,7 +148,7 @@ if __name__ == "__main__":
     # the RISC-V assembly code                 #
     # ======================================== #
     codegen = RISC_V_CodeGenerator(function_name)
-    assembly = codegen.generate(ast)
+    assembly = codegen.generate(ast_2)
     print("\nRISC-V Assembly Code:")
     print("-" * 70)
     print(assembly)
@@ -157,7 +158,7 @@ if __name__ == "__main__":
     with open(risc_v_file, 'w') as f:
         f.write(assembly)
     print(f"\nAssembly code saved to: {risc_v_file}")
-    
+
     # ======================================== #
     # Construct the associated C code file     #
     # ======================================== #

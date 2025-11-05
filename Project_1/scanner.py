@@ -53,7 +53,7 @@ def Tokenize(code):
         kind = mo.lastgroup
         value = mo.group()
         column = mo.start() - line_start
-        index = mo.start()
+        index = mo.end()
         if kind == 'int':
             value = int(value)
         elif kind == 'var' and value in keywords:

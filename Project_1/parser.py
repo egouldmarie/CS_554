@@ -180,7 +180,7 @@ class Parser:
         tokens associated with a program consisting of a sequence
         of statements.
         '''
-        
+
         pt_stmts_2, ast_stmts_2 = self.statement_seq()
         self.program_pt_2 = TreeNode(
                 type=PROG, value=pt_type_to_value[PROG],
@@ -199,9 +199,9 @@ class Parser:
                     "unexpected token or missing seq token ';'. "
                     "Last token processed was "
                     f"'{_value}' on line {_line}.")
-            
+
         return (Tree(self.program_pt_2), Tree(self.program_ast_2))
-    
+
     def statement_seq(self):
         '''
         Parsing a block or sequence of statements or commands,
@@ -214,7 +214,7 @@ class Parser:
         symbol ';' (i.e. a semicolon).
         Note that a sequence never ends with the sequencing symbol ';'
         (because the ';' signals that another statement should follow).
-        Note also that a sequence is never literally empty; instead, 
+        Note also that a sequence is never literally empty; instead,
         an effectively 'empty sequence' must consist of one or more
         'skip' statements (this is also how the general if-then-else
         structure is used to produce just the if-then component).
@@ -247,7 +247,7 @@ class Parser:
                     "Parser.statement() method encountered a problematic "
                     f"statement on line {_line}. Last token processed "
                     f"was '{_value}' on line {_line}.")
-                
+
         if self.peek(SEQ):
 
             # Process subsequent statement(s) if we see seq op ';'
@@ -268,7 +268,7 @@ class Parser:
                         f"was '{_value}' on line {_line}."
                     )
         else:
-        
+
             # The supposed sequence actually consisted of just a
             # single statement, so treat it as a statement instead
             # of a sequence
@@ -293,7 +293,7 @@ class Parser:
                 f"was '{_value}' on line {_line}. "
                 "Possible extra ';' token?"
             )
-        
+
         # assignment (e.g., x := 3 + 2 * y)
         if self.current_token.type == VAR and self.peek_ahead(ASSIGN):
             pt_result_2, ast_result_2 = self.parse_assignment_stmt()
@@ -302,7 +302,7 @@ class Parser:
                     children=[pt_result_2]
             )
             return (pt_result_2, ast_result_2)
-        
+
         # skip (e.g., if x > 0 then x := x + 1 else skip)
         if self.peek(SKIP):
             pt_result_2, ast_result_2 = self.parse_skip_stmt()
@@ -311,7 +311,7 @@ class Parser:
                     children=[pt_result_2]
             )
             return (pt_result_2, ast_result_2)
-        
+
         # if-then-else (if x < y then x := 0 else y := 0)
         if self.current_token.type == IF:
             pt_result_2, ast_result_2 = self.parse_if_stmt()
@@ -320,7 +320,7 @@ class Parser:
                     children=[pt_result_2]
             )
             return (pt_result_2, ast_result_2)
-        
+
         # while-do (while x < 10 do x := x + 1)
         if self.peek(WHILE):
             pt_result_2, ast_result_2 = self.parse_while_stmt()
@@ -348,7 +348,7 @@ class Parser:
                 children = [ast_left_2, ast_right_2]
         )
         return (pt_result_2, ast_result_2)
-    
+
     def parse_skip_stmt(self):
         '''
         Parsing of 'skip' statements, which might appear (e.g.) in
@@ -363,7 +363,7 @@ class Parser:
         be ignored programmatically, we still include all such stmts
         in the parse tree (PT) and abstract syntax tree (AST).
         '''
-        self.consume(SKIP)   # discard 'skip' token
+        token = self.consume(SKIP)   # discard 'skip' token
 
         pt_result_2 = TreeNode(
                 type=SKIP, value=pt_type_to_value[SKIP]
@@ -372,7 +372,7 @@ class Parser:
                 type=SKIP, value=ast_type_to_value[SKIP]
         )
         return (pt_result_2, ast_result_2)
-    
+
     def parse_if_stmt(self):
         '''
         Parsing of if-then-else statements like this:
@@ -387,11 +387,11 @@ class Parser:
         to be parsed is indeed an if-then-else statement.
         '''
 
-        self.consume(IF)                   # discard 'if'
+        if_token = self.consume(IF)                   # discard 'if'
         # recursively parse boolean condition
-        pt_condition_2, ast_condition_2 = self.bool_expr() 
+        pt_condition_2, ast_condition_2 = self.bool_expr()
         self.consume(THEN)                 # discard 'then'
-        
+
         # recursively parse the true block stmts
         pt_true_block_2, ast_true_block_2 = self.statement_seq()
         # if ast_true_block is empty, we need to put a 'skip'
@@ -412,9 +412,9 @@ class Parser:
                     f"'{_value}' on line {_line} at col {_col}. "
                     "Previous token was: "
                     f"'{self.tokens[self.current_token_index-1]}'")
-        
+
         self.consume(ELSE)                 # discard 'else'
-        
+
         # recursively parse the else block stmts
         pt_else_block_2, ast_else_block_2 = self.statement_seq()
 
@@ -432,7 +432,7 @@ class Parser:
                     f"'{_value}' on line {_line} at col {_col}. "
                     "Previous token was: "
                     f"'{self.tokens[self.current_token_index-1]}'")
-            
+
         self.consume(FI)                   # discard 'fi'
 
         # Should not get this far if user tried to leave an empty
@@ -465,11 +465,11 @@ class Parser:
         statement to be parsed is indeed a while-do statement.
         '''
 
-        self.consume(WHILE)            # discard 'while'
+        while_token = self.consume(WHILE)            # discard 'while'
         # Recursively parse boolean condition
         pt_condition_2, ast_condition_2 = self.bool_expr()
         self.consume(DO)               # discard 'do'
-        
+
         # Recursively parse and return the while block of stmts
         pt_while_block_2, ast_while_block_2 = self.statement_seq()
 
@@ -484,7 +484,7 @@ class Parser:
                     "empty DO block in an WHILE statement. "
                     "Last token processed was "
                     f"'{_value}' on line {_line}.")
-                                     
+
         self.consume(OD)               # discard 'od'
 
         # Should not get this far if user tried to leave an empty
@@ -503,7 +503,7 @@ class Parser:
                 children=[ast_condition_2, ast_while_block_2]
         )
         return (pt_result_2, ast_result_2)
-    
+
     def expr(self):
         '''
         Handles either an arithmetic expression (e.g. x + 2 * y)
@@ -515,12 +515,12 @@ class Parser:
         else:
             pt_result_2, ast_result_2 = self.arith_expr()
         return (pt_result_2, ast_result_2)
-    
+
     # ====================================== #
     # arithmetic expressions and components  #
     # SEE: arith_expr, term, factor          #
     # ====================================== #
-    
+
     def arith_expr(self):
         '''
         For a sum or difference expression such as x + 2 * y (which
@@ -572,7 +572,7 @@ class Parser:
                 ast_result_2 = ast_result_2
 
         return (pt_result_2, ast_result_2)
-    
+
     def term(self):
         '''
         For a participant (term) in a sum or difference expression.
@@ -602,7 +602,7 @@ class Parser:
                 )
                 ast_result_2 = ast_result_2
         return (pt_result_2, ast_result_2)
-    
+
     def factor(self):
         '''
         For a participant in a multiplication, such a participant being
@@ -618,7 +618,7 @@ class Parser:
                               ])]
             )
             ast_result_2 = TreeNode(
-                    type=INT, value=int(token.value)
+                    type=INT, value=int(token.value), index=token.index
             )
             return (pt_result_2, ast_result_2)
         elif self.peek(VAR):
@@ -631,7 +631,7 @@ class Parser:
                               ])]
             )
             ast_result_2 = TreeNode(
-                    type=VAR, value=token.value
+                    type=VAR, value=token.value, index=token.index
             )
             return (pt_result_2, ast_result_2)
         elif self.peek(LPAR):
@@ -654,12 +654,12 @@ class Parser:
             raise SyntaxError(
                     "In Parser.factor(), encountered unexpected token "
                     f"'{_value}' on line {_line}.")
-    
+
     # ====================================== #
     # boolean expressions and components     #
     # SEE: bool_expr, bool_term, bool_factor #
     # ====================================== #
-    
+
     def bool_expr(self):
         '''
         Primarily for a boolean OR, which has the lowest precedence
@@ -693,7 +693,7 @@ class Parser:
                 )
                 ast_result_2 = ast_result_2
         return (pt_result_2, ast_result_2)
-    
+
     def bool_term(self):
         '''
         For a boolean AND, whose components then might themselves be
@@ -723,7 +723,7 @@ class Parser:
                 )
                 ast_result_2 = ast_result_2
         return (pt_result_2, ast_result_2)
-    
+
     def bool_factor(self):
         '''
         For parsing a boolean of the form [b] (i.e. a boolean in
@@ -733,7 +733,7 @@ class Parser:
         bool_factor.
         '''
         if self.peek(NOT):
-            self.consume(NOT)
+            not_token = self.consume(NOT)
             self.consume(LBRAC)        # discard [
             # recursively parse and return inner expr
             pt_result_2, ast_result_2 = self.bool_expr()
