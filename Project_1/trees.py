@@ -86,8 +86,8 @@ class TreeNode:
         # To facilitate printing and debugging.
         if self.children == []:
             return f"{self.value}"
-        elif self.type == 'var':
-            return f"{self.value}"
+        # elif self.type == 'var':
+        #     return f"{self.value}"
         return f"({self.value} --> {self.children})"
 
 class Tree:
