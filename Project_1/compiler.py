@@ -90,7 +90,7 @@ if __name__ == "__main__":
     #  parse tree (PT) and abstract    #
     #  syntax tree (AST)               #
     # ================================ #
-    parse_tree, ast, ast_2 = parser.parse()
+    parse_tree, parse_tree_2, ast, ast_2 = parser.parse()
 
     print("\nParse Tree (PT):")
     print("-" * 70)
@@ -112,6 +112,8 @@ if __name__ == "__main__":
     explicit_parse_tree = Tree(explicit_parse_tree_root)
     generate_dot_from_tree(
             explicit_parse_tree.root, filename=parse_file)
+    
+    generate_dot_from_tree(parse_tree_2, filename="pt_2.dot")
 
     # ============================ #
     # Generate graphic rep of AST  #
