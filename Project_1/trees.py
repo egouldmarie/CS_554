@@ -390,7 +390,7 @@ def pretty_format(node, indent=0, output=""):
         output = output+f";\n"
         output = pretty_format(node.children[1], indent, output)
     elif node.type == ASSIGN:
-        output = output+f"{("   "*indent)}"
+        output = output+f"{('   '*indent)}"
         #if node.l is not None:
         #    output = output+"{--[--}"
         output = pretty_format(node.children[0], indent, output)
@@ -403,21 +403,21 @@ def pretty_format(node, indent=0, output=""):
         output = output+f" {str(node.value)} "
         output = pretty_format(node.children[1], indent, output)
     elif node.type == WHILE:
-        output = output+f"{"   "*indent}while "
+        output = output+f"{'   '*indent}while "
         output = pretty_format(node.children[0], indent+1, output)
         output = output+" do\n"
         output = pretty_format(node.children[1], indent+1, output)
-        output = output+f"\n{"   "*indent}od"
+        output = output+f"\n{'   '*indent}od"
     elif node.type == IF:
-        output = output+f"{"   "*indent}if "
+        output = output+f"{'   '*indent}if "
         output = pretty_format(node.children[0], indent+1, output)
         output = output+" then\n"
         output = pretty_format(node.children[1], indent+1, output)
-        output = output+f"\n{"   "*indent}else\n"
+        output = output+f"\n{'   '*indent}else\n"
         output = pretty_format(node.children[2], indent+1, output)
-        output = output+f"\n{"   "*indent}fi"
+        output = output+f"\n{'   '*indent}fi"
     elif node.type == SKIP:
-        output = output+f"{"   "*indent}"+str(node.value)
+        output = output+f"{'   '*indent}"+str(node.value)
     else:
         #if node.l is not None:
         #    output = output+f"{"   "*indent}"+"{--[--}"
