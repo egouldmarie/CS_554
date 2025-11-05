@@ -107,8 +107,7 @@ if __name__ == "__main__":
     #  Generate graphic rep of PT  #
     # ============================ #
     TreeNode._next_id = 0
-    explicit_parse_tree_root = (
-            convert_nested_tuple_parse_tree_to_tree(parse_tree))
+    explicit_parse_tree_root = (convert_nested_tuple_parse_tree_to_tree(parse_tree))
     explicit_parse_tree = Tree(explicit_parse_tree_root)
     generate_dot_from_tree(
             explicit_parse_tree.root, filename=parse_file)
@@ -116,30 +115,30 @@ if __name__ == "__main__":
     # ============================ #
     # Generate graphic rep of AST  #
     # ============================ #
-    TreeNode._next_id = 0  # reset id numbering to keep ids small
-    explicit_ast_root = convert_nested_tuple_ast_to_tree(ast)
-    explicit_ast = Tree(explicit_ast_root)
-    generate_dot_from_tree(explicit_ast.root, filename=ast_file)
+    #TreeNode._next_id = 0  # reset id numbering to keep ids small
+    #explicit_ast_root = convert_nested_tuple_ast_to_tree(ast)
+    #explicit_ast = Tree(explicit_ast_root)
+    #generate_dot_from_tree(explicit_ast.root, filename=ast_file)
 
     generate_dot_from_tree(ast_2, filename="ast_2.dot")
 
-    decorate_ast(explicit_ast.root)
-    generate_dot_from_tree(explicit_ast.root, filename=decorated_ast_file)
+    decorate_ast(ast_2)
+    generate_dot_from_tree(ast_2, filename=decorated_ast_file)
     print(f"View the '.dot' files in Graphviz or VSCode to see the "
            "resulting abstract syntax tree (AST).")
 
-    labeled_code = pretty_format(explicit_ast_root)
+    #labeled_code = pretty_format(explicit_ast_root)
     #print(labeled_code)
-    with open(labeled_source, 'w') as f:
-        f.write(labeled_code)
-    print(f"\nLabeled code saved to: {labeled_source}\n")
+    #with open(labeled_source, 'w') as f:
+    #    f.write(labeled_code)
+    #print(f"\nLabeled code saved to: {labeled_source}\n")
 
     # ======================================== #
     # Generate, display, and save to .s file   #
     # the RISC-V assembly code                 #
     # ======================================== #
     codegen = RISC_V_CodeGenerator(function_name)
-    assembly = codegen.generate(ast)
+    assembly = codegen.generate(ast_2)
     print("\nRISC-V Assembly Code:")
     print("-" * 70)
     print(assembly)

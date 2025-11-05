@@ -82,7 +82,7 @@ class RISC_V_CodeGenerator:
         """
         self.code.append(instruction)
     
-    def generate(self, ast: List[Any]) -> str:
+    def generate(self, ast) -> str:
         """
         Main code generation function
         """
@@ -100,33 +100,33 @@ class RISC_V_CodeGenerator:
         
         return "\n".join(self.code)
     
-    def _collect_variables(self, ast: List[Any]):
+    def _collect_variables(self, ast):
         """
         Collect all variables from AST
         """
         def collect_from_node(node, branch=0):
             if branch > self.max_branch: self.max_branch = branch
-            if isinstance(node, tuple):
-                if node[0] == "var":
-                    if node[1] not in self.variables:
-                        self.variables.append(node[1])
-                elif node[0] in ["seq", "assign", "while"]:
-                    collect_from_node(node[1])
-                    collect_from_node(node[2])
-                elif node[0] == "if":
-                    collect_from_node(node[1])
-                    collect_from_node(node[2])
-                    collect_from_node(node[3])
-                elif node[0] in ["add", "sub", "mult", "and", "or", "not"]:
-                    collect_from_node(node[1])
-                    if len(node) > 2:
-                        collect_from_node(node[2], branch+1)
-                elif node[0] in ["=", "<", "<=", ">", ">="]:
-                    collect_from_node(node[1])
-                    collect_from_node(node[2], branch+1)
+            #if isinstance(node, tuple):
+            if node.type == "var":
+                if node.value not in self.variables:
+                    self.variables.append(node.value)
+            elif node.type in ["seq", "assign", "while"]:
+                collect_from_node(node.children[0])
+                collect_from_node(node.children[1])
+            elif node.type == "if":
+                collect_from_node(node.children[0])
+                collect_from_node(node.children[1])
+                collect_from_node(node.children[2])
+            elif node.type in ["add", "sub", "mult", "and", "or", "not"]:
+                collect_from_node(node.children[0])
+                if len(node.children) > 1:
+                    collect_from_node(node.children[1], branch+1)
+            elif node.type in ["=", "<", "<=", ">", ">="]:
+                collect_from_node(node.children[0])
+                collect_from_node(node.children[1], branch+1)
         
-        for stmt in ast:
-            collect_from_node(stmt)
+        #for stmt in ast:
+        collect_from_node(ast)
         
         self.variables.sort()
     
@@ -157,30 +157,31 @@ class RISC_V_CodeGenerator:
         self.gen("    ret")
         #self.gen("")
     
-    def _generate_statement(self, stmt):
+    def _generate_statement(self, node):
         """
         Generate statement code
         """
-        if stmt[0] == "seq":
-            self._generate_statement(stmt[1]) # left node
-            self._generate_statement(stmt[2]) # right node
-        elif stmt[0] == "assign":
-            self._generate_assignment(stmt)
-        elif stmt[0] == "if":
-            self._generate_if_statement(stmt)
-        elif stmt[0] == "while":
-            self._generate_while_statement(stmt)
-        elif stmt[0] == "skip":
-            self.gen(f"    # [skip]{self.l}")
+        if node.type == "seq":
+            self._generate_statement(node.children[0]) # left node
+            self._generate_statement(node.children[1]) # right node
+        elif node.type == "assign":
+            self._generate_assignment(node)
+        elif node.type == "if":
+            self._generate_if_statement(node)
+        elif node.type == "while":
+            self._generate_while_statement(node)
+        elif node.type == "skip":
+            #self.gen(f"    # [skip]{self.l}")
+            self.gen("    # skip")
             self.l = self.l+1
             #pass
     
-    def _generate_assignment(self, stmt):
+    def _generate_assignment(self, node):
         """
         Generate assignment statement code
         """
-        var_name = stmt[1][1]
-        expr = stmt[2]
+        var_name = node.children[0].value
+        expr = node.children[1]
         
         # Generate expression code
         #self.gen("    # [")
@@ -195,13 +196,13 @@ class RISC_V_CodeGenerator:
         self.gen(f"    sd t0, {var_offset}(a0)")        # copy value from temporary register (t0) into argument memory
         #self.gen(f"    # ]{l}")
 
-    def _generate_if_statement(self, stmt):
+    def _generate_if_statement(self, node):
         """
         Generate if statement code
         """
-        condition = stmt[1]
-        true_block = stmt[2]
-        else_block = stmt[3]
+        condition = node.children[0]
+        true_block = node.children[1]
+        else_block = node.children[2]
         
         # Generate condition code
         #self.gen("")
@@ -235,12 +236,12 @@ class RISC_V_CodeGenerator:
         #self.gen("")
         self.gen(f"{end_label}:")
     
-    def _generate_while_statement(self, stmt):
+    def _generate_while_statement(self, node):
         """
         Generate while statement code
         """
-        condition = stmt[1]
-        body = stmt[2]
+        condition = node.children[0]
+        body = node.children[1]
         
         # Generate labels
         label = self._new_label()
@@ -273,43 +274,43 @@ class RISC_V_CodeGenerator:
         #self.gen(f"    # Od")
         self.gen(f"{end_label}:")
 
-    def _generate_expression(self, expr, branch=0):
+    def _generate_expression(self, node, branch=0):
         """
         Generate expression code, store result in stack
         """
-        if expr[0] == "int":
+        if node.type == "int":
             # Integer constant
-            value = expr[1]
+            value = node.value
             #self.gen(f"    # literal = {value}")
             self.gen(f"    li t0, {value}")             # put value into a temporary register (t0)
             self.gen(f"    sd t0, {8*branch}(sp)")       # copy value from temp register into stack
-        elif expr[0] == "var":
+        elif node.type == "var":
             # Variable
-            var_name = expr[1]
+            var_name = node.value
             #self.gen(f"    # var {var_name}")
             var_offset = self.variables.index(var_name) * 8
             self.gen(f"    ld t0, {var_offset}(a0)")    # load value into a temporary register (t0)
             self.gen(f"    sd t0, {8*branch}(sp)")       # copy value from temp register into stack
-        elif expr[0] in ["true", "false"]:
+        elif node.type in ["true", "false"]:
             # Boolean constant
-            #self.gen(f"    # boolean constant = {expr[0]}")
-            if expr[0] == "true":
+            #self.gen(f"    # boolean constant = {node.type}")
+            if node.type == "true":
                 self.gen(f"    li t0, 1")               # put 1 into a temporary register (t0)
                 self.gen(f"    sd t0, {8*branch}(sp)")   # copy value from temp register into stack
             else:
                 self.gen(f"    sd x0, {8*branch}(sp)")   # copy 0 from x0 (always 0) into stack
-        elif expr[0] in ["add", "sub", "mult", "=", "<", ">", "<=", ">=", "and", "or"]:
-            self._generate_expression(expr[1], branch)
-            self._generate_expression(expr[2], branch+1)
-            #self.gen(self.comment_map[expr[0]])
+        elif node.type in ["add", "sub", "mult", "=", "<", ">", "<=", ">=", "and", "or"]:
+            self._generate_expression(node.children[0], branch)
+            self._generate_expression(node.children[1], branch+1)
+            #self.gen(self.comment_map[node.type])
             self.gen(f"    ld t1, {8*(branch+1)}(sp)")   # load value from stack into a temporary register (t1)
             self.gen(f"    ld t0, {8*branch}(sp)")       # load value from stack into a temporary register (t0)
 
-            self.gen(self.riscv_map[expr[0]])           # perform operation, place result in t0
+            self.gen(self.riscv_map[node.type])           # perform operation, place result in t0
             self.gen(f"    sd t0, {8*branch}(sp)")       # copy value from temp register (t0) into stack
-        elif expr[0] == "not":
+        elif node.type == "not":
             # Logical NOT (Unary Operator)
-            self._generate_expression(expr[1], branch)
+            self._generate_expression(node.children[0], branch)
             #self.gen(f"    # NOT")
             self.gen(f"    ld t0, {8*branch}(sp)")
 

@@ -337,7 +337,7 @@ class Parser:
         pt_result  = (SKIP,)
         ast_result = (SKIP,)
         ast_result_2 = TreeNode(
-                type=SKIP, value=type_to_value(SKIP)
+                type=SKIP, value=type_to_value[SKIP]
         )
         return (pt_result, ast_result, ast_result_2)
     
