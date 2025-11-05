@@ -17,6 +17,7 @@ class Token(NamedTuple):
     value: str
     line: int
     column: int
+    index: int
 
 def Tokenize(code):
     '''
@@ -52,6 +53,7 @@ def Tokenize(code):
         kind = mo.lastgroup
         value = mo.group()
         column = mo.start() - line_start
+        index = mo.start()
         if kind == 'int':
             value = int(value)
         elif kind == 'var' and value in keywords:
@@ -64,4 +66,4 @@ def Tokenize(code):
             continue
         elif kind == 'mismatch':
             raise RuntimeError(f'{value!r} unexpected on line {line_num}')
-        yield Token(kind, value, line_num, column)
+        yield Token(kind, value, line_num, column, index)

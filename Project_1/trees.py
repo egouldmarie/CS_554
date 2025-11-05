@@ -310,27 +310,24 @@ def convert_nested_tuple_ast_to_tree(nested_tuple):
 
     return current_node
 
-def decorate_ast(root_node):
+def decorate_ast(node, label=0):
     '''
     Given a Tree (consisting of a tree of TreeNodes), add unique
     labels to assignment nodes, skip nodes, if conditions, and
     while conditions.
     '''
-    global label
-    globals()['label'] = 0
-    def _traverse_and_add_nodes(node):
-        if node.value in ['WHILE', 'IF']:
-            node.children[0].l = globals()['label']
-            globals()['label'] = globals()['label']+1
-            for child in node.children:
-                _traverse_and_add_nodes(child)
-        elif node.type in [SKIP, ASSIGN]:
-            node.l = globals()['label']
-            globals()['label'] = globals()['label']+1
-        elif node.type in [SEQ]:
-            for child in node.children:
-                _traverse_and_add_nodes(child)
-    _traverse_and_add_nodes(root_node)
+    if node.value in ['WHILE', 'IF']:
+        node.children[0].l = label
+        label = label+1
+        for child in node.children:
+            label = decorate_ast(child, label)
+    elif node.type in [SKIP, ASSIGN]:
+        node.l = label
+        label = label+1
+    elif node.type in [SEQ]:
+        for child in node.children:
+            label = decorate_ast(child, label)
+    return label
 
 def generate_dot_from_tree(root_node, filename="tree.dot"):
     '''
@@ -361,6 +358,25 @@ def generate_dot_from_tree(root_node, filename="tree.dot"):
         f.write("\n".join(dot_content))
 
     print(f"DOT file '{filename}' generated successfully!")
+
+def insert_labels(node, while_code, label=None, prev_idx=0, output=""):
+    if node.l is not None:
+        label = node.l
+
+    if len(node.children) == 0:
+        if label is not None:
+            output = output + while_code[prev_idx:(node.index+1)] + " {- LABEL " + label + " -}"
+            prev_idx = node.index+1
+        else:
+            output = output + while_code[prev_idx:]
+    else:
+        if label is not None:
+            (output, prev_idx) = insert_labels(node.children[-1], while_code, label, prev_idx, output)
+        else:
+            for child in node.children:
+                (output, prev_idx) = insert_labels(child, label, prev_idx, output)
+
+    return (output, prev_idx)
 
 def pretty_format(node, indent=0, output=""):
     '''

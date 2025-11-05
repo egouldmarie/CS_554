@@ -49,6 +49,11 @@ if __name__ == "__main__":
     parse_file = tree_path+file_name+"_parse_tree.dot"
     decorated_ast_file = decorated_tree_path+file_name+"_ast_tree.dot"
 
+    labeled_path = args.filename[:idx] + "labeled/"
+    os.makedirs(os.path.dirname(labeled_path), exist_ok=True)
+
+    labeled_source = labeled_path + args.filename[idx:]
+
     compile_path = args.filename[:idx] + "compiled/"
     os.makedirs(os.path.dirname(compile_path), exist_ok=True)
 
@@ -123,7 +128,11 @@ if __name__ == "__main__":
     print(f"View the '.dot' files in Graphviz or VSCode to see the "
            "resulting abstract syntax tree (AST).")
 
-    print(pretty_format(explicit_ast_root))
+    labeled_code = pretty_format(explicit_ast_root)
+    #print(labeled_code)
+    with open(labeled_source, 'w') as f:
+        f.write(labeled_code)
+    print(f"\nLabeled code saved to: {labeled_source}\n")
 
     # ======================================== #
     # Generate, display, and save to .s file   #
