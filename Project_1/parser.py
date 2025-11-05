@@ -2,13 +2,13 @@
 filename:     parser.py
 authors:      Emma Gould, Nathan Rowe, Qinghong Shao, Warren Craft
 created:      2025-10-02
-last updated: 2025-11-04
+last updated: 2025-11-05
 description:  Implements a Parser class for parsing a WHILE language
               program, using an initial scanner output as input.
               Created for CS 554 (Compiler Construction) at UNM.
 """
 
-from trees import TreeNode
+from trees import Tree, TreeNode
 
 # ======================== #
 #    Useful constants      #
@@ -57,15 +57,22 @@ VAR       = "var"
 WHILE     = "while"
 
 '''
-A dictionary to facilitate the choice of a 'value' for each node,
+Dictionaries to facilitate the choice of a 'value' for each node,
 which in turn will be used eventually as the label for the node in
-DOT language and visualization process. Remember that this is for
-the AST (not the parse tree), and so the substitution choices might
-be quite different. The dict is (mostly) in alphabetical order by KEY.
+DOT language and visualization process. One dictionary is meant for
+constructing the parse tree (PT), and the other for the abstract
+syntax tree (AST). The substitution choices might be quite different.
+The dictionaries are (mostly) in alphabetical order by KEY.
 Most are trivial right now, but the dict gives a central location for
-substitutions.
+organizing desired substitutions.
 '''
-type_to_value = {
+# type_to_value = {
+#     ADD:'+', AND:'AND', ASSIGN:':=', IF:'IF', MULT:'*',
+#     NOT:'NOT', OR:'OR',
+#     PROG:'PROG', SEQ:';', SKIP:SKIP, SUB:'\u2014', WHILE:'WHILE',
+#     '<':'<', '>':'>', '<=':'<=', '>=':'>=', '=':'='
+# }
+ast_type_to_value = {
     ADD:'+', AND:'AND', ASSIGN:':=', IF:'IF', MULT:'*',
     NOT:'NOT', OR:'OR',
     PROG:'PROG', SEQ:';', SKIP:SKIP, SUB:'\u2014', WHILE:'WHILE',
@@ -111,9 +118,7 @@ class Parser:
         # tuples (essentially sub-trees). The AST is a simplified
         # (abstracted) version of the PT, generated in parallel with
         # the generation of the PT.
-        self.program_pt  = ()
         self.program_pt_2  = TreeNode()
-        self.program_ast = ()
         self.program_ast_2 = TreeNode()
 
     def _advance(self):
@@ -176,13 +181,11 @@ class Parser:
         of statements.
         '''
         
-        pt_stmts, pt_stmts_2, ast_stmts, ast_stmts_2 = self.statement_seq()
-        self.program_pt = ('prog',) + (pt_stmts,)
+        pt_stmts_2, ast_stmts_2 = self.statement_seq()
         self.program_pt_2 = TreeNode(
                 type=PROG, value=pt_type_to_value[PROG],
                 children=[pt_stmts_2]
         )
-        self.program_ast = ast_stmts
         self.program_ast_2 = ast_stmts_2
 
         if self.current_token_index < len(self.tokens) - 1:
@@ -197,7 +200,7 @@ class Parser:
                     "Last token processed was "
                     f"'{_value}' on line {_line}.")
             
-        return (self.program_pt, self.program_pt_2, self.program_ast, self.program_ast_2)
+        return (Tree(self.program_pt_2), Tree(self.program_ast_2))
     
     def statement_seq(self):
         '''
@@ -216,14 +219,12 @@ class Parser:
         'skip' statements (this is also how the general if-then-else
         structure is used to produce just the if-then component).
         '''
-        pt_statement_block = (SEQ, )
         pt_statement_block_2 = TreeNode(
                 type=SEQ, value=pt_type_to_value[SEQ]
         )
         # ast_statement_block = []
-        ast_statement_block = (SEQ, )
         ast_statement_block_2 = TreeNode(
-                type=SEQ, value=type_to_value[SEQ]
+                type=SEQ, value=ast_type_to_value[SEQ]
         )
 
 
@@ -234,13 +235,9 @@ class Parser:
 
         # begin with the very first statement
         # Process the first statement in the sequence.
-        pt_stmt, pt_stmt_2, ast_stmt, ast_stmt_2 = self.statement()
-        if pt_stmt:
-            pt_statement_block = pt_statement_block + (pt_stmt,)
+        pt_stmt_2, ast_stmt_2 = self.statement()
+        if pt_stmt_2:
             pt_statement_block_2.children.append(pt_stmt_2)
-            # if ast_stmt != (SKIP,):
-            # ast_statement_block.append(ast_stmt)
-            ast_statement_block = ast_statement_block + (ast_stmt,)
             ast_statement_block_2.children.append(ast_stmt_2)
         else:
             _last_token = self.tokens[self.current_token_index]
@@ -256,13 +253,9 @@ class Parser:
             # Process subsequent statement(s) if we see seq op ';'
             while self.peek(SEQ):
                 self.consume(SEQ)
-                pt_stmt, pt_stmt_2, ast_stmt, ast_stmt_2 = self.statement_seq()
-                if pt_stmt:
-                    pt_statement_block = pt_statement_block + (pt_stmt,)
+                pt_stmt_2, ast_stmt_2 = self.statement_seq()
+                if pt_stmt_2:
                     pt_statement_block_2.children.append(pt_stmt_2)
-                    # if ast_stmt != (SKIP,):
-                    # ast_statement_block.append(ast_stmt)
-                    ast_statement_block = ast_statement_block + (ast_stmt,)
                     ast_statement_block_2.children.append(ast_stmt_2)
                 else:
                     _last_token = self.tokens[self.current_token_index]
@@ -279,12 +272,10 @@ class Parser:
             # The supposed sequence actually consisted of just a
             # single statement, so treat it as a statement instead
             # of a sequence
-            pt_statement_block = pt_statement_block[1]
             pt_statement_block_2 = pt_statement_block_2.children[0]
-            ast_statement_block = ast_statement_block[1]
             ast_statement_block_2 = ast_statement_block_2.children[0]
 
-        return (pt_statement_block, pt_statement_block_2, ast_statement_block, ast_statement_block_2)
+        return (pt_statement_block_2, ast_statement_block_2)
 
     def statement(self):
         '''
@@ -305,43 +296,39 @@ class Parser:
         
         # assignment (e.g., x := 3 + 2 * y)
         if self.current_token.type == VAR and self.peek_ahead(ASSIGN):
-            pt_result, pt_result_2, ast_result, ast_result_2 = self.parse_assignment_stmt()
-            pt_result = (STMT, pt_result)
+            pt_result_2, ast_result_2 = self.parse_assignment_stmt()
             pt_result_2 = TreeNode(
                     type=STMT, value=pt_type_to_value[STMT],
                     children=[pt_result_2]
             )
-            return (pt_result, pt_result_2, ast_result, ast_result_2)
+            return (pt_result_2, ast_result_2)
         
         # skip (e.g., if x > 0 then x := x + 1 else skip)
         if self.peek(SKIP):
-            pt_result, pt_result_2, ast_result, ast_result_2 = self.parse_skip_stmt()
-            pt_result = (STMT, pt_result)
+            pt_result_2, ast_result_2 = self.parse_skip_stmt()
             pt_result_2 = TreeNode(
                     type=STMT, value=pt_type_to_value[STMT],
                     children=[pt_result_2]
             )
-            return (pt_result, pt_result_2, ast_result, ast_result_2)
+            return (pt_result_2, ast_result_2)
         
         # if-then-else (if x < y then x := 0 else y := 0)
         if self.current_token.type == IF:
-            pt_result, pt_result_2, ast_result, ast_result_2 = self.parse_if_stmt()
-            pt_result = (STMT, pt_result)
+            pt_result_2, ast_result_2 = self.parse_if_stmt()
             pt_result_2 = TreeNode(
                     type=STMT, value=pt_type_to_value[STMT],
                     children=[pt_result_2]
             )
-            return (pt_result, pt_result_2, ast_result, ast_result_2)
+            return (pt_result_2, ast_result_2)
         
         # while-do (while x < 10 do x := x + 1)
         if self.peek(WHILE):
-            pt_result, pt_result_2, ast_result, ast_result_2 = self.parse_while_stmt()
-            pt_result = (STMT, pt_result)
+            pt_result_2, ast_result_2 = self.parse_while_stmt()
             pt_result_2 = TreeNode(
                     type=STMT, value=pt_type_to_value[STMT],
                     children=[pt_result_2]
             )
-            return (pt_result, pt_result_2, ast_result, ast_result_2)
+            return (pt_result_2, ast_result_2)
 
     def parse_assignment_stmt(self):
         '''
@@ -349,20 +336,18 @@ class Parser:
         Method assumes caller has already verified that the statement
         to be parsed is indeed an assignment statement.
         '''
-        pt_left, pt_left_2, ast_left, ast_left_2 = self.expr()
+        pt_left_2, ast_left_2 = self.expr()
         self.consume(ASSIGN)
-        pt_right, pt_right_2, ast_right, ast_right_2 = self.expr()
-        pt_result = (ASSIGN, pt_left, pt_right)
+        pt_right_2, ast_right_2 = self.expr()
         pt_result_2 = TreeNode(
                 type=ASSIGN, value=pt_type_to_value[ASSIGN],
                 children = [pt_left_2, pt_right_2]
         )
-        ast_result = (ASSIGN, ast_left, ast_right)
         ast_result_2 = TreeNode(
-                type=ASSIGN, value=type_to_value[ASSIGN],
+                type=ASSIGN, value=ast_type_to_value[ASSIGN],
                 children = [ast_left_2, ast_right_2]
         )
-        return (pt_result, pt_result_2, ast_result, ast_result_2)
+        return (pt_result_2, ast_result_2)
     
     def parse_skip_stmt(self):
         '''
@@ -373,21 +358,20 @@ class Parser:
             else
               skip
             fi;
-        A skip statement does nothing and can generally be ignored.
-        This needs to be included in the parse tree (PT) but can be
-        omitted from (some parts of) the abstract syntax tree (AST).
+        or even intermingled (for no obvious good reason) in a sequence
+        of statements. Although a skip statement does nothing and can
+        be ignored programmatically, we still include all such stmts
+        in the parse tree (PT) and abstract syntax tree (AST).
         '''
         self.consume(SKIP)   # discard 'skip' token
 
-        pt_result  = (SKIP,)
         pt_result_2 = TreeNode(
                 type=SKIP, value=pt_type_to_value[SKIP]
         )
-        ast_result = (SKIP,)
         ast_result_2 = TreeNode(
-                type=SKIP, value=type_to_value[SKIP]
+                type=SKIP, value=ast_type_to_value[SKIP]
         )
-        return (pt_result, pt_result_2, ast_result, ast_result_2)
+        return (pt_result_2, ast_result_2)
     
     def parse_if_stmt(self):
         '''
@@ -405,34 +389,54 @@ class Parser:
 
         self.consume(IF)                   # discard 'if'
         # recursively parse boolean condition
-        pt_condition, pt_condition_2, ast_condition, ast_condition_2 = self.bool_expr() 
+        pt_condition_2, ast_condition_2 = self.bool_expr() 
         self.consume(THEN)                 # discard 'then'
         
         # recursively parse the true block stmts
-        pt_true_block, pt_true_block_2, ast_true_block, ast_true_block_2 = self.statement_seq()
+        pt_true_block_2, ast_true_block_2 = self.statement_seq()
         # if ast_true_block is empty, we need to put a 'skip'
         # as a place-holder; otherwise the 'then' block might disappear
         # in rare-ish cases where we skip the 'then' and just use
         # the 'else'
-        if len(ast_true_block) == 0:
-            ast_true_block.append((SKIP,))
-            ast_true_block_2 = TreeNode(
-                    type=SKIP, value=type_to_value[SKIP]
-            )
+        if (len(pt_true_block_2.children) == 0
+            or len(ast_true_block_2.children) == 0):
+            # empty block of statements, but that's not allowed
+            _last_token = self.tokens[self.current_token_index]
+            _value = _last_token.value
+            _line = _last_token.line
+            _col  = _last_token.column
+            raise SyntaxError(
+                    "Parsing ended prematurely, possibly due to an "
+                    "empty THEN block in an IF statement. "
+                    "Last token processed was "
+                    f"'{_value}' on line {_line} at col {_col}. "
+                    "Previous token was: "
+                    f"'{self.tokens[self.current_token_index-1]}'")
         
         self.consume(ELSE)                 # discard 'else'
         
         # recursively parse the else block stmts
-        pt_else_block, pt_else_block_2, ast_else_block, ast_else_block_2 = self.statement_seq()
+        pt_else_block_2, ast_else_block_2 = self.statement_seq()
+
+        if (len(pt_else_block_2.children) == 0
+            or len(ast_else_block_2.children) == 0):
+            # empty block of statements, but that's not allowed
+            _last_token = self.tokens[self.current_token_index]
+            _value = _last_token.value
+            _line = _last_token.line
+            _col  = _last_token.column
+            raise SyntaxError(
+                    "Parsing ended prematurely, possibly due to an "
+                    "empty ELSE block in an IF statement. "
+                    "Last token processed was "
+                    f"'{_value}' on line {_line} at col {_col}. "
+                    "Previous token was: "
+                    f"'{self.tokens[self.current_token_index-1]}'")
             
         self.consume(FI)                   # discard 'fi'
 
-        # Note that the true_block and/or else_block cannot generally
-        # be literally empty but might consist of SKIP command(s), and
-        # a SKIP might produce an empty block for the AST. We are
-        # implicitly assuming the THEN block will NOT be empty.
-        pt_result = (IF, pt_condition, THEN, pt_true_block,
-                     ELSE, pt_else_block, FI)
+        # Should not get this far if user tried to leave an empty
+        # block for the THEN block or ELSE block in an IF stmt.
         pt_result_2 = TreeNode(
                 type=IF, value=pt_type_to_value[IF],
                 children=[
@@ -444,19 +448,11 @@ class Parser:
                         TreeNode(type=FI, value=pt_type_to_value[FI])
                 ]
         )
-        if isinstance(ast_else_block, list) and len(ast_else_block)==0:
-            ast_result = (IF, ast_condition, ast_true_block)
-            ast_result_2 = TreeNode(
-                    type=IF, value=type_to_value[IF],
-                    children=[ast_condition_2, ast_true_block_2]
-            )
-        else:
-            ast_result = (IF, ast_condition, ast_true_block, ast_else_block)
-            ast_result_2 = TreeNode(
-                    type=IF, value=type_to_value[IF],
+        ast_result_2 = TreeNode(
+                    type=IF, value=ast_type_to_value[IF],
                     children=[ast_condition_2, ast_true_block_2, ast_else_block_2]
-            )
-        return (pt_result, pt_result_2, ast_result, ast_result_2)
+        )
+        return (pt_result_2, ast_result_2)
 
     def parse_while_stmt(self):
         '''
@@ -471,16 +467,28 @@ class Parser:
 
         self.consume(WHILE)            # discard 'while'
         # Recursively parse boolean condition
-        pt_condition, pt_condition_2, ast_condition, ast_condition_2 = self.bool_expr()
+        pt_condition_2, ast_condition_2 = self.bool_expr()
         self.consume(DO)               # discard 'do'
         
         # Recursively parse and return the while block of stmts
-        pt_while_block, pt_while_block_2, ast_while_block, ast_while_block_2 = self.statement_seq()
+        pt_while_block_2, ast_while_block_2 = self.statement_seq()
+
+        if (len(pt_while_block_2.children) == 0
+            or len(ast_while_block_2.children) == 0):
+            # empty block of statements, but that's not allowed
+            _last_token = self.tokens[self.current_token_index]
+            _value = _last_token.value
+            _line = _last_token.line
+            raise SyntaxError(
+                    "Parsing ended prematurely, possibly due to an "
+                    "empty DO block in an WHILE statement. "
+                    "Last token processed was "
+                    f"'{_value}' on line {_line}.")
                                      
         self.consume(OD)               # discard 'od'
 
-        # Can the while_block can be empty?
-        pt_result  = (WHILE, pt_condition, DO, pt_while_block, OD)
+        # Should not get this far if user tried to leave an empty
+        # block for the DO block in the WHILE stmt.
         pt_result_2 = TreeNode(
                 type=WHILE, value=pt_type_to_value[WHILE],
                 children=[
@@ -490,12 +498,11 @@ class Parser:
                         TreeNode(type=OD, value=pt_type_to_value[OD])
                 ]
         )
-        ast_result = (WHILE, ast_condition, ast_while_block)
         ast_result_2 = TreeNode(
-                type=WHILE, value=type_to_value[WHILE],
+                type=WHILE, value=ast_type_to_value[WHILE],
                 children=[ast_condition_2, ast_while_block_2]
         )
-        return (pt_result, pt_result_2, ast_result, ast_result_2)
+        return (pt_result_2, ast_result_2)
     
     def expr(self):
         '''
@@ -504,10 +511,10 @@ class Parser:
         '''
         # distinguish boolean vs arithmetic expressions
         if (self.current_token.type in [LBRAC, NOT, AND, OR]):
-            pt_result, pt_result_2, ast_result, ast_result_2 = self.bool_expr()
+            pt_result_2, ast_result_2 = self.bool_expr()
         else:
-            pt_result, pt_result_2, ast_result, ast_result_2 = self.arith_expr()
-        return (pt_result, pt_result_2, ast_result, ast_result_2)
+            pt_result_2, ast_result_2 = self.arith_expr()
+        return (pt_result_2, ast_result_2)
     
     # ====================================== #
     # arithmetic expressions and components  #
@@ -519,15 +526,14 @@ class Parser:
         For a sum or difference expression such as x + 2 * y (which
         then consists of arithmetic terms and factors).
         '''
-        pt_result, pt_result_2, ast_result, ast_result_2 = self.term()
+        pt_result_2, ast_result_2 = self.term()
 
         if self.current_token:
             if (self.current_token.value in ['+', '-']):
                 op_token = self.current_token
                 if op_token.value == '+':
                     self.consume(OP_A)
-                    pt_right, pt_right_2, ast_right, ast_right_2 = self.term()
-                    pt_result = (ARITHEXPR, (ADD, pt_result, pt_right))
+                    pt_right_2, ast_right_2 = self.term()
                     pt_result_2 = TreeNode(
                             type=ARITHEXPR, value=pt_type_to_value[ARITHEXPR],
                             children=[
@@ -537,16 +543,14 @@ class Parser:
                                 )
                             ]
                     )
-                    ast_result = (ADD, ast_result, ast_right)
                     ast_result_2 = TreeNode(
-                            type=ADD, value=type_to_value[ADD],
+                            type=ADD, value=ast_type_to_value[ADD],
                             children=[ast_result_2, ast_right_2]
                     )
                 else:
                     # subtraction expression
                     self.consume(OP_A)
-                    pt_right, pt_right_2, ast_right, ast_right_2 = self.term()
-                    pt_result = (ARITHEXPR, (SUB, pt_result, pt_right))
+                    pt_right_2, ast_right_2 = self.term()
                     pt_result_2 = TreeNode(
                             type=ARITHEXPR, value=pt_type_to_value[ARITHEXPR],
                             children=[
@@ -556,21 +560,18 @@ class Parser:
                                 )
                             ]
                     )
-                    ast_result = (SUB, ast_result, ast_right)
                     ast_result_2 = TreeNode(
-                            type=SUB, value=type_to_value[SUB],
+                            type=SUB, value=ast_type_to_value[SUB],
                             children=[ast_result_2, ast_right_2]
                     )
             else:
-                pt_result = (ARITHEXPR, pt_result)
                 pt_result_2 = TreeNode(
                         type=ARITHEXPR, value=pt_type_to_value[ARITHEXPR],
                         children=[pt_result_2]
                 )
-                ast_result = ast_result
                 ast_result_2 = ast_result_2
 
-        return (pt_result, pt_result_2, ast_result, ast_result_2)
+        return (pt_result_2, ast_result_2)
     
     def term(self):
         '''
@@ -578,12 +579,11 @@ class Parser:
         For example, in the expression 'x + 2 * y,'
         the 'x' and the '2 * y' are both terms.
         '''
-        pt_result, pt_result_2, ast_result, ast_result_2 = self.factor()
+        pt_result_2, ast_result_2 = self.factor()
         if self.current_token:
             if (self.current_token.value == '*'):
                 op_token = self.consume(OP_A)
-                pt_right, pt_right_2, ast_right, ast_right_2 = self.factor()
-                pt_result = (ARITHTERM, (MULT, pt_result, pt_right))
+                pt_right_2, ast_right_2 = self.factor()
                 pt_result_2 = TreeNode(
                         type=ARITHTERM, value=pt_type_to_value[ARITHTERM],
                         children=[TreeNode(
@@ -591,20 +591,17 @@ class Parser:
                                   children=[pt_result_2, pt_right_2]
                         )]
                 )
-                ast_result = (MULT, ast_result, ast_right)
                 ast_result_2 = TreeNode(
-                        type=MULT, value=type_to_value[MULT],
+                        type=MULT, value=ast_type_to_value[MULT],
                         children=[ast_result_2, ast_right_2]
                 )
             else:
-                pt_result = (ARITHTERM, pt_result)
                 pt_result_2 = TreeNode(
                         type=ARITHTERM, value=pt_type_to_value[ARITHTERM],
                         children=[pt_result_2]
                 )
-                ast_result = ast_result
                 ast_result_2 = ast_result_2
-        return (pt_result, pt_result_2, ast_result, ast_result_2)
+        return (pt_result_2, ast_result_2)
     
     def factor(self):
         '''
@@ -613,7 +610,6 @@ class Parser:
         '''
         if self.peek(INT):
             token = self.consume(INT)
-            pt_result = ('arith_factor', (INT, int(token.value)))
             pt_result_2 = TreeNode(
                     type=ARITHFACT, value=pt_type_to_value[ARITHFACT],
                     children=[TreeNode(type=INT, value=pt_type_to_value[INT],
@@ -621,14 +617,12 @@ class Parser:
                                   TreeNode(type=INT, value=int(token.value))
                               ])]
             )
-            ast_result = (INT, int(token.value))
             ast_result_2 = TreeNode(
                     type=INT, value=int(token.value)
             )
-            return (pt_result, pt_result_2, ast_result, ast_result_2)
+            return (pt_result_2, ast_result_2)
         elif self.peek(VAR):
             token = self.consume(VAR)
-            pt_result = ('arith_factor', (VAR, token.value))
             pt_result_2 = TreeNode(
                     type=ARITHFACT, value=pt_type_to_value[ARITHFACT],
                     children=[TreeNode(type=VAR, value=pt_type_to_value[VAR],
@@ -636,17 +630,15 @@ class Parser:
                                   TreeNode(type=VAR, value=token.value)
                               ])]
             )
-            ast_result = (VAR, token.value)
             ast_result_2 = TreeNode(
                     type=VAR, value=token.value
             )
-            return (pt_result, pt_result_2, ast_result, ast_result_2)
+            return (pt_result_2, ast_result_2)
         elif self.peek(LPAR):
             self.consume(LPAR)    # consume and discard '('
             # recursively parse and return inner expr
-            pt_result, pt_result_2, ast_result, ast_result_2 = self.expr()
+            pt_result_2, ast_result_2 = self.expr()
             self.consume(RPAR)    # consume and discard ')'
-            pt_result = ('arith_factor', (PARENS, pt_result))
             pt_result_2 = TreeNode(
                     type=ARITHFACT, value=pt_type_to_value[ARITHFACT],
                     children=[
@@ -655,7 +647,7 @@ class Parser:
                             TreeNode(type=RPAR, value=pt_type_to_value[RPAR])
                     ]
             )
-            return (pt_result, pt_result_2, ast_result, ast_result_2)
+            return (pt_result_2, ast_result_2)
         else:
             _value = self.current_token.value
             _line  = self.current_token.line
@@ -676,12 +668,11 @@ class Parser:
         b1 AND b2 is analogous to arithmetic term;
         NOT[b], [b] are analogous to arithmetic factor.
         '''
-        pt_result, pt_result_2, ast_result, ast_result_2 = self.bool_term()
+        pt_result_2, ast_result_2 = self.bool_term()
         if (self.current_token):
             if (self.current_token.value == OR):
                 self.consume(OR)
-                pt_right, pt_right_2, ast_right, ast_right_2 = self.bool_term()
-                pt_result = (BOOLEXPR, (OR, pt_result, pt_right))
+                pt_right_2, ast_right_2 = self.bool_term()
                 pt_result_2 = TreeNode(
                         type=BOOLEXPR, value=pt_type_to_value[BOOLEXPR],
                         children=[
@@ -691,32 +682,28 @@ class Parser:
                                 )
                         ]
                 )
-                ast_result = (OR, ast_result, ast_right)
                 ast_result_2 = TreeNode(
-                        type=OR, value=type_to_value[OR],
+                        type=OR, value=ast_type_to_value[OR],
                         children=[ast_result_2, ast_right_2]
                 )
             else:
-                pt_result = (BOOLEXPR, pt_result)
                 pt_result_2 = TreeNode(
                         type=BOOLEXPR, value=pt_type_to_value[BOOLEXPR],
                         children=[pt_result_2]
                 )
-                ast_result = ast_result
                 ast_result_2 = ast_result_2
-        return (pt_result, pt_result_2, ast_result, ast_result_2)
+        return (pt_result_2, ast_result_2)
     
     def bool_term(self):
         '''
         For a boolean AND, whose components then might themselves be
         bool_expr, bool_term, or bool_factor.
         '''
-        pt_result, pt_result_2, ast_result, ast_result_2 = self.bool_factor()
+        pt_result_2, ast_result_2 = self.bool_factor()
         if self.current_token:
             if self.peek(AND):
                 self.consume(AND)
-                pt_right, pt_right_2, ast_right, ast_right_2 = self.bool_factor()
-                pt_result  = (BOOLTERM, (AND, pt_result, pt_right))
+                pt_right_2, ast_right_2 = self.bool_factor()
                 pt_result_2 = TreeNode(
                         type=BOOLTERM, value=pt_type_to_value[BOOLTERM],
                         children=[
@@ -726,19 +713,16 @@ class Parser:
                             )
                         ]
                 )
-                ast_result = (AND, ast_result, ast_right)
                 ast_result_2 = TreeNode(
-                        type=AND, value=type_to_value[AND],
+                        type=AND, value=ast_type_to_value[AND],
                         children=[ast_result_2, ast_right_2])
             else:
-                pt_result = (BOOLTERM, pt_result)
                 pt_result_2 = TreeNode(
                         type=BOOLTERM, value=pt_type_to_value[BOOLTERM],
                         children=[pt_result_2]
                 )
-                ast_result = ast_result
                 ast_result_2 = ast_result_2
-        return (pt_result, pt_result_2, ast_result, ast_result_2)
+        return (pt_result_2, ast_result_2)
     
     def bool_factor(self):
         '''
@@ -752,9 +736,8 @@ class Parser:
             self.consume(NOT)
             self.consume(LBRAC)        # discard [
             # recursively parse and return inner expr
-            pt_result, pt_result_2, ast_result, ast_result_2 = self.bool_expr()
+            pt_result_2, ast_result_2 = self.bool_expr()
             self.consume(RBRAC)        # discard ]
-            pt_result  = (BOOLFACT, (NOT, (BRACS, pt_result)))
             pt_result_2 = TreeNode(
                     type=BOOLFACT, value=pt_type_to_value[BOOLFACT],
                     children=[TreeNode(type=NOT, value=pt_type_to_value[NOT],
@@ -764,61 +747,53 @@ class Parser:
                                   TreeNode(type=RBRAC, value=pt_type_to_value[RBRAC])
                               ])]
             )
-            ast_result = (NOT, ast_result)
             ast_result_2 = TreeNode(
-                    type=NOT, value=type_to_value[NOT],
+                    type=NOT, value=ast_type_to_value[NOT],
                     children = [ast_result_2]
             )
-            return (pt_result, pt_result_2, ast_result, ast_result_2)
+            return (pt_result_2, ast_result_2)
         elif self.peek(LBRAC):
             self.consume(LBRAC)        # discard [
             # recursively parse and return inner expr
-            pt_result, pt_result_2, ast_result, ast_result_2 = self.bool_expr()
+            pt_result_2, ast_result_2 = self.bool_expr()
             self.consume(RBRAC)        # discard ]
-            pt_result = (BOOLFACT, (BRACS, pt_result))
             pt_result_2 = TreeNode(type=BOOLFACT, value=pt_type_to_value[BOOLFACT],
                           children=[
                               TreeNode(type=LBRAC, value=pt_type_to_value[LBRAC]),
                               pt_result_2,
                               TreeNode(type=RBRAC, value=pt_type_to_value[RBRAC])
                           ])
-            return (pt_result, pt_result_2, ast_result, ast_result_2)
+            return (pt_result_2, ast_result_2)
         elif self.peek(TRUE):
             self.consume(TRUE)
-            pt_result = (BOOLFACT, TRUE)
             pt_result_2 = TreeNode(
                     type=TRUE, value=pt_type_to_value[TRUE]
             )
-            ast_result = TRUE
             ast_result_2 = TreeNode(
-                    type=TRUE, value=type_to_value[TRUE]
+                    type=TRUE, value=ast_type_to_value[TRUE]
             )
-            return (pt_result, pt_result_2, ast_result, ast_result_2)
+            return (pt_result_2, ast_result_2)
         elif self.peek(FALSE):
             self.consume(FALSE)
-            pt_result = (BOOLFACT, FALSE)
             pt_result_2 = TreeNode(
                     type=FALSE, value=pt_type_to_value[FALSE]
             )
-            ast_result = FALSE
             ast_result_2 = TreeNode(
-                    type=FALSE, value=type_to_value[FALSE]
+                    type=FALSE, value=ast_type_to_value[FALSE]
             )
-            return (pt_result, pt_result_2, ast_result, ast_result_2)
+            return (pt_result_2, ast_result_2)
         else:
             # we must have a relational expression such as x < y
-            pt_left, pt_left_2, ast_left, ast_left_2 = self.arith_expr()
+            pt_left_2, ast_left_2 = self.arith_expr()
             op = self.consume(OP_R).value
-            pt_right, pt_right_2, ast_right, ast_right_2 = self.arith_expr()
+            pt_right_2, ast_right_2 = self.arith_expr()
 
-            pt_result = (BOOLFACT, (op, pt_left, pt_right))
             pt_result_2 = TreeNode(
                    type=BOOLFACT, value=pt_type_to_value[BOOLFACT],
                    children=[TreeNode(type=op, value=pt_type_to_value[op],
                                       children=[pt_left_2, pt_right_2])]
             )
-            ast_result = (op, ast_left, ast_right)
             ast_result_2 = TreeNode(
-                    type=op, value=type_to_value[op],
+                    type=op, value=ast_type_to_value[op],
                     children=[ast_left_2, ast_right_2])
-            return (pt_result, pt_result_2, ast_result, ast_result_2)
+            return (pt_result_2, ast_result_2)
