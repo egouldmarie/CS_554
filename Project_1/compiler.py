@@ -90,7 +90,7 @@ if __name__ == "__main__":
     #  parse tree (PT) and abstract    #
     #  syntax tree (AST)               #
     # ================================ #
-    parse_tree, ast = parser.parse()
+    parse_tree, ast, ast_2 = parser.parse()
 
     print("\nParse Tree (PT):")
     print("-" * 70)
@@ -120,6 +120,9 @@ if __name__ == "__main__":
     explicit_ast_root = convert_nested_tuple_ast_to_tree(ast)
     explicit_ast = Tree(explicit_ast_root)
     generate_dot_from_tree(explicit_ast.root, filename=ast_file)
+
+    generate_dot_from_tree(ast_2, filename="ast_2.dot")
+
     decorate_ast(explicit_ast.root)
     generate_dot_from_tree(explicit_ast.root, filename=decorated_ast_file)
     print(f"View the '.dot' files in Graphviz or VSCode to see the "
