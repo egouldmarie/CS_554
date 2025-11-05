@@ -78,6 +78,7 @@ class TreeNode:
         self.l = None
         self.type = None
         self.value = None
+        self.index = None
         self.children = []
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -365,8 +366,8 @@ def insert_labels(node, while_code, label=None, prev_idx=0, output=""):
 
     if len(node.children) == 0:
         if label is not None:
-            output = output + while_code[prev_idx:(node.index+1)] + " {- LABEL " + label + " -}"
-            prev_idx = node.index+1
+            output = output + while_code[prev_idx:node.index] + " {- LABEL " + str(label) + " -}"
+            prev_idx = node.index
         else:
             output = output + while_code[prev_idx:]
     else:
@@ -374,56 +375,6 @@ def insert_labels(node, while_code, label=None, prev_idx=0, output=""):
             (output, prev_idx) = insert_labels(node.children[-1], while_code, label, prev_idx, output)
         else:
             for child in node.children:
-                (output, prev_idx) = insert_labels(child, label, prev_idx, output)
+                (output, prev_idx) = insert_labels(child, while_code, label, prev_idx, output)
 
     return (output, prev_idx)
-
-def pretty_format(node, indent=0, output=""):
-    '''
-    Given a Tree (consisting of a tree of TreeNodes), pretty
-    print the corresponding source program.
-    '''
-    if node.type == SEQ:
-        #if node.l is not None:
-        #    output = output+"{--[--}"
-        output = pretty_format(node.children[0], indent, output)
-        output = output+f";\n"
-        output = pretty_format(node.children[1], indent, output)
-    elif node.type == ASSIGN:
-        output = output+f"{('   '*indent)}"
-        #if node.l is not None:
-        #    output = output+"{--[--}"
-        output = pretty_format(node.children[0], indent, output)
-        output = output+f" {str(node.value)} "
-        output = pretty_format(node.children[1], indent, output)
-    elif node.type in ([ADD, AND, MULT, OR, SUB]+OP_R):
-        #if node.l is not None:
-        #    output = output+"{--[--}"
-        output = pretty_format(node.children[0], indent, output)
-        output = output+f" {str(node.value)} "
-        output = pretty_format(node.children[1], indent, output)
-    elif node.type == WHILE:
-        output = output+f"{'   '*indent}while "
-        output = pretty_format(node.children[0], indent+1, output)
-        output = output+" do\n"
-        output = pretty_format(node.children[1], indent+1, output)
-        output = output+f"\n{'   '*indent}od"
-    elif node.type == IF:
-        output = output+f"{'   '*indent}if "
-        output = pretty_format(node.children[0], indent+1, output)
-        output = output+" then\n"
-        output = pretty_format(node.children[1], indent+1, output)
-        output = output+f"\n{'   '*indent}else\n"
-        output = pretty_format(node.children[2], indent+1, output)
-        output = output+f"\n{'   '*indent}fi"
-    elif node.type == SKIP:
-        output = output+f"{'   '*indent}"+str(node.value)
-    else:
-        #if node.l is not None:
-        #    output = output+f"{"   "*indent}"+"{--[--}"
-        output = output+str(node.value)
-    
-    if node.l is not None:
-        output = output+" {- LABEL "+f"{node.l}"+" -}"
-
-    return output

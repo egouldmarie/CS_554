@@ -19,7 +19,7 @@ from scanner import Tokenize
 from codegen import RISC_V_CodeGenerator
 from trees import (
     Tree, TreeNode,
-    decorate_ast, pretty_format, generate_dot_from_tree,
+    decorate_ast, insert_labels, generate_dot_from_tree,
     convert_nested_tuple_parse_tree_to_tree,
     convert_nested_tuple_ast_to_tree)
 
@@ -127,11 +127,11 @@ if __name__ == "__main__":
     print(f"View the '.dot' files in Graphviz or VSCode to see the "
            "resulting abstract syntax tree (AST).")
 
-    #labeled_code = pretty_format(explicit_ast_root)
-    #print(labeled_code)
-    #with open(labeled_source, 'w') as f:
-    #    f.write(labeled_code)
-    #print(f"\nLabeled code saved to: {labeled_source}\n")
+    labeled_code = insert_labels(ast_2, whileCode)[0]
+    print(labeled_code)
+    with open(labeled_source, 'w') as f:
+        f.write(labeled_code)
+    print(f"\nLabeled code saved to: {labeled_source}\n")
 
     # ======================================== #
     # Generate, display, and save to .s file   #
