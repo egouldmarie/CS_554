@@ -1,0 +1,37 @@
+{-
+  Contributed by Fall 2023 Team SnakeByte (Python)
+  Gerald Collom
+  Caleb Frisch
+  Louis Jencka
+-}
+{-
+    input:
+        N: upper limit number
+    working vars:
+        factors, a, b
+    output:
+        result: sum of number of factors for numbers from 2, N
+-}
+
+result := 0;
+while N >= 2 do
+    factors := 0;
+    a := 2;
+
+    while 2*a <= N do
+        b := N;
+        while b >= 1 do
+            if b * a = N then
+                factors := factors + 1
+            else
+                skip
+            fi;
+            b := b - 1
+        od;
+        a := a + 1
+    od;
+
+    result := result + factors;
+    N := N - 1
+od;
+output := result

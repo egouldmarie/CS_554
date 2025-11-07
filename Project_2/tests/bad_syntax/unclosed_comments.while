@@ -1,0 +1,4 @@
+x := 5;
+{- This comment is not closed
+y := 10;
+z := x + y

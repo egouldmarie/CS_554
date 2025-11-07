@@ -1,0 +1,12 @@
+{-
+Computes the factorial of the number stored in x and leaves the result in z:
+-}
+
+y := x {- LABEL 0 -};
+z := 1 {- LABEL 1 -};
+while y > 1 {- LABEL 2 -} do
+  z := z * y {- LABEL 3 -};
+  y := y - 1 {- LABEL 4 -}
+od;
+y := 0 {- LABEL 5 -};
+output := z {- LABEL 6 -}
