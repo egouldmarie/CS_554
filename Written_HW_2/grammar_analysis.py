@@ -3,17 +3,14 @@ filename:     grammar_analysis.py
 authors:      Warren Craft
 created:      2025-11-08
 last updated: 2025-11-15
-description:  Coordinates actions of Scanner, Parser, and
-              RISC_V_CodeGenerator classes for the compiling of
-              WHILE language programs, including the construction
-              of bespoke C programs for each compiled WHILE program.
+description:  Coordinates actions of nullable, firsdt_set, and
+              follow_set functions to analyze a given grammar.
               Created for CS 554 (Compiler Construction) at UNM.
 """
 
-import os
 import argparse
-import subprocess
 
+# to help read in the string version of the grammar:
 import ast
 
 from nullable import find_nullable_nonterminals
@@ -37,6 +34,10 @@ if __name__ == "__main__":
         grammar_string = f.read()
         grammar = ast.literal_eval(grammar_string)
 
+    # ================================ #
+    #  Display the grammar read in     #
+    #  from the arg file               #
+    # ================================ #
     print("\nGrammar:")
     print("-" * 70)
     for key, value in grammar.items():
