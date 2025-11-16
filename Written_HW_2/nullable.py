@@ -4,11 +4,11 @@ def find_nullable_nonterminals(grammar):
     in a given context-free grammar.
     Args:
         grammar: A grammar in the form of a dictionary,
-           where grammar["rules"]
-           is a dictionary where keys are non-terminals (strings)
-           and values are lists of production rules (lists of strings).
-           The epsilon character eps = "\u03B5" or the empty string ''
-           represents the empty string.
+           where grammar["rules"] is itself a dictionary where keys
+           are non-terminals (strings) and values are lists of
+           production rules (lists of strings).
+           The epsilon character eps = "\u03B5" represents the empty
+           string.
     Returns:
         set: A set of nullable non-terminal symbols.
     """
@@ -50,6 +50,8 @@ def find_nullable_nonterminals(grammar):
                     if non_terminal not in nullable:
                         nullable.add(non_terminal)
                         changed = True
-                        break  # Found a nullable production for this non-terminal
+                        # Found a nullable production for this
+                        # non-terminal, so we can stop
+                        break  
 
     return nullable
