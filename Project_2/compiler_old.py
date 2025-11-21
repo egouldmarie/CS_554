@@ -77,22 +77,20 @@ if __name__ == "__main__":
     for token in Tokenize(whileCode):
         print(token)
         tokens.append(token)
-
+    
     print("-" * 70)
 
     # ================================ #
     #  Init a Parser with tokens       #
     # ================================ #
     parser = Parser(tokens)
-
+    
     # ================================ #
     #  Generate and display the        #
     #  parse tree (PT) and abstract    #
     #  syntax tree (AST)               #
     # ================================ #
-    parse_tree, ast = parser.parse()
-    parse_tree = parse_tree.root
-    ast = ast.root
+    parse_tree, ast, ast_2 = parser.parse()
 
     print("\nParse Tree (PT):")
     print("-" * 70)
@@ -108,22 +106,28 @@ if __name__ == "__main__":
     # ============================ #
     #  Generate graphic rep of PT  #
     # ============================ #
-
-    generate_dot_from_tree(parse_tree, filename=parse_file)
+    TreeNode._next_id = 0
+    explicit_parse_tree_root = (convert_nested_tuple_parse_tree_to_tree(parse_tree))
+    explicit_parse_tree = Tree(explicit_parse_tree_root)
+    generate_dot_from_tree(
+            explicit_parse_tree.root, filename=parse_file)
 
     # ============================ #
     # Generate graphic rep of AST  #
     # ============================ #
+    #TreeNode._next_id = 0  # reset id numbering to keep ids small
+    #explicit_ast_root = convert_nested_tuple_ast_to_tree(ast)
+    #explicit_ast = Tree(explicit_ast_root)
+    #generate_dot_from_tree(explicit_ast.root, filename=ast_file)
 
-    generate_dot_from_tree(ast, filename=ast_file)
+    generate_dot_from_tree(ast_2, filename="ast_2.dot")
 
-    decorate_ast(ast)
-    generate_dot_from_tree(ast, filename=decorated_ast_file)
-
+    decorate_ast(ast_2)
+    generate_dot_from_tree(ast_2, filename=decorated_ast_file)
     print(f"View the '.dot' files in Graphviz or VSCode to see the "
            "resulting abstract syntax tree (AST).")
 
-    labeled_code = insert_labels(ast, whileCode)[0]
+    labeled_code = insert_labels(ast_2, whileCode)[0]
     print(labeled_code)
     with open(labeled_source, 'w') as f:
         f.write(labeled_code)
@@ -134,7 +138,7 @@ if __name__ == "__main__":
     # the RISC-V assembly code                 #
     # ======================================== #
     codegen = RISC_V_CodeGenerator(function_name)
-    assembly = codegen.generate(ast)
+    assembly = codegen.generate(ast_2)
     print("\nRISC-V Assembly Code:")
     print("-" * 70)
     print(assembly)
@@ -144,7 +148,7 @@ if __name__ == "__main__":
     with open(risc_v_file, 'w') as f:
         f.write(assembly)
     print(f"\nAssembly code saved to: {risc_v_file}")
-
+    
     # ======================================== #
     # Construct the associated C code file     #
     # ======================================== #
