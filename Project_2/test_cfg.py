@@ -272,6 +272,47 @@ def test_cfg_fibonacci():
     
     return cfg
 
+def test_cfg_primes_counter():
+    """Test CFG generation with primes counter program"""
+    print("\n" + "=" * 70)
+    print("Test 7: Primes Counter Program")
+    print("=" * 70)
+    
+    # Read the collatz program
+    with open("tests/good_syntax/primescounter.while", "r") as f:
+        while_code = f.read()
+    
+    print(f"\nInput code:\n{while_code}\n")
+    
+    # Tokenize and parse
+    tokens = list(Tokenize(while_code))
+    print("Tokenization complete.")
+    parser = Parser(tokens)
+    print("Parser initialized.")
+    parse_tree, ast = parser.parse()
+    print("Parsing complete.")
+    ast = ast.root
+    
+    # Decorate AST
+    TreeNode._next_id = 0
+    decorate_ast(ast)
+    print("AST decoration complete.")
+    
+    # Generate CFG
+    cfg = ast_to_cfg(ast)
+    print("CFG generation complete.")
+    
+    print("\n" + "=" * 70)
+    print("CFG Structure:")
+    print("=" * 70)
+    print_cfg(cfg)
+    
+    # Generate DOT file
+    generate_cfg_dot(cfg, "test_primes_counter_cfg.dot")
+    print("\nCFG DOT file saved to: test_primes_counter_cfg.dot")
+    
+    return cfg
+
 if __name__ == "__main__":
     print("\n" + "=" * 70)
     print("CFG Module Test Suite")
@@ -286,6 +327,7 @@ if __name__ == "__main__":
         test_cfg_factorial()
         test_cfg_collatz()
         test_cfg_fibonacci()
+        test_cfg_primes_counter()
         
         print("\n" + "=" * 70)
         print("All tests completed!")
@@ -298,6 +340,7 @@ if __name__ == "__main__":
         print("  - test_factorial_cfg.dot")
         print("  - test_collatz_cfg.dot")
         print("  - test_fibonacci_cfg.dot")
+        print("  - test_primes_counter_cfg.dot")
         print("\nYou can view these files in Graphviz or VSCode with Graphviz extension.")
         
     except Exception as e:
