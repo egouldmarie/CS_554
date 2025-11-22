@@ -30,11 +30,12 @@ def test_cfg_simple():
     
     # Parse
     parser = Parser(tokens)
-    parse_tree, ast, ast_2 = parser.parse()
+    parse_tree, ast = parser.parse()
+    ast = ast.root
     
     # Decorate AST
     TreeNode._next_id = 0
-    decorate_ast(ast_2)
+    decorate_ast(ast)
     
     print("\nDecorated AST labels:")
     def print_labels(node, indent=0):
@@ -42,10 +43,10 @@ def test_cfg_simple():
             print("  " * indent + f"Label {node.l}: {node.type} - {node.value}")
         for child in node.children:
             print_labels(child, indent + 1)
-    print_labels(ast_2)
+    print_labels(ast)
     
     # Generate CFG
-    cfg = ast_to_cfg(ast_2)
+    cfg = ast_to_cfg(ast)
     
     print("\n" + "=" * 70)
     print("CFG Structure:")
@@ -72,14 +73,15 @@ def test_cfg_sequence():
     # Tokenize and parse
     tokens = list(Tokenize(while_code))
     parser = Parser(tokens)
-    parse_tree, ast, ast_2 = parser.parse()
+    parse_tree, ast = parser.parse()
+    ast = ast.root
     
     # Decorate AST
     TreeNode._next_id = 0
-    decorate_ast(ast_2)
+    decorate_ast(ast)
     
     # Generate CFG
-    cfg = ast_to_cfg(ast_2)
+    cfg = ast_to_cfg(ast)
     
     print("\n" + "=" * 70)
     print("CFG Structure:")
@@ -106,14 +108,15 @@ def test_cfg_if():
     # Tokenize and parse
     tokens = list(Tokenize(while_code))
     parser = Parser(tokens)
-    parse_tree, ast, ast_2 = parser.parse()
+    parse_tree, ast = parser.parse()
+    ast = ast.root
     
     # Decorate AST
     TreeNode._next_id = 0
-    decorate_ast(ast_2)
+    decorate_ast(ast)
     
     # Generate CFG
-    cfg = ast_to_cfg(ast_2)
+    cfg = ast_to_cfg(ast)
     
     print("\n" + "=" * 70)
     print("CFG Structure:")
@@ -140,14 +143,15 @@ def test_cfg_while():
     # Tokenize and parse
     tokens = list(Tokenize(while_code))
     parser = Parser(tokens)
-    parse_tree, ast, ast_2 = parser.parse()
+    parse_tree, ast = parser.parse()
+    ast = ast.root
     
     # Decorate AST
     TreeNode._next_id = 0
-    decorate_ast(ast_2)
+    decorate_ast(ast)
     
     # Generate CFG
-    cfg = ast_to_cfg(ast_2)
+    cfg = ast_to_cfg(ast)
     
     print("\n" + "=" * 70)
     print("CFG Structure:")
@@ -175,14 +179,15 @@ def test_cfg_factorial():
     # Tokenize and parse
     tokens = list(Tokenize(while_code))
     parser = Parser(tokens)
-    parse_tree, ast, ast_2 = parser.parse()
+    parse_tree, ast = parser.parse()
+    ast = ast.root
     
     # Decorate AST
     TreeNode._next_id = 0
-    decorate_ast(ast_2)
+    decorate_ast(ast)
     
     # Generate CFG
-    cfg = ast_to_cfg(ast_2)
+    cfg = ast_to_cfg(ast)
     
     print("\n" + "=" * 70)
     print("CFG Structure:")
