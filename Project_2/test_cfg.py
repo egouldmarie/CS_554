@@ -200,6 +200,42 @@ def test_cfg_factorial():
     
     return cfg
 
+def test_cfg_collatz():
+    """Test CFG generation with factorial program"""
+    print("\n" + "=" * 70)
+    print("Test 6: Collatz Program")
+    print("=" * 70)
+    
+    # Read the collatz program
+    with open("tests/good_syntax/example6-collatz.while", "r") as f:
+        while_code = f.read()
+    
+    print(f"\nInput code:\n{while_code}\n")
+    
+    # Tokenize and parse
+    tokens = list(Tokenize(while_code))
+    parser = Parser(tokens)
+    parse_tree, ast = parser.parse()
+    ast = ast.root
+    
+    # Decorate AST
+    TreeNode._next_id = 0
+    decorate_ast(ast)
+    
+    # Generate CFG
+    cfg = ast_to_cfg(ast)
+    
+    print("\n" + "=" * 70)
+    print("CFG Structure:")
+    print("=" * 70)
+    print_cfg(cfg)
+    
+    # Generate DOT file
+    generate_cfg_dot(cfg, "test_collatz_cfg.dot")
+    print("\nCFG DOT file saved to: test_collatz_cfg.dot")
+    
+    return cfg
+
 if __name__ == "__main__":
     print("\n" + "=" * 70)
     print("CFG Module Test Suite")
@@ -212,6 +248,7 @@ if __name__ == "__main__":
         test_cfg_if()
         test_cfg_while()
         test_cfg_factorial()
+        test_cfg_collatz()
         
         print("\n" + "=" * 70)
         print("All tests completed!")
@@ -222,6 +259,7 @@ if __name__ == "__main__":
         print("  - test_if_cfg.dot")
         print("  - test_while_cfg.dot")
         print("  - test_factorial_cfg.dot")
+        print("  - test_collatz_cfg.dot")
         print("\nYou can view these files in Graphviz or VSCode with Graphviz extension.")
         
     except Exception as e:
