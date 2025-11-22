@@ -69,7 +69,7 @@ organizing desired substitutions.
 ast_type_to_value = {
     ADD:'+', AND:'AND', ASSIGN:':=', IF:'IF', MULT:'*',
     NOT:'NOT', OR:'OR',
-    PROG:'PROG', SEQ:';', SKIP:SKIP, SUB:'\u2014', WHILE:'WHILE',
+    PROG:'PROG', SEQ:';', SKIP:SKIP, SUB:'\u2013', WHILE:'WHILE',
     '<':'<', '>':'>', '<=':'<=', '>=':'>=', '=':'='
 }
 pt_type_to_value = {
