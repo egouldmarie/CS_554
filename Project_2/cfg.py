@@ -1,13 +1,14 @@
 """
 filename:     cfg.py
 authors:      Auto-generated for Project 2
-created:      2025-11/18
+created:      2025-11-18
+last updated: 2025-11-21
 description:  Implements Control Flow Graph (CFG) data structures and
               conversion from decorated AST to CFG.
               Created for CS 554 (Compiler Construction) at UNM.
 """
 
-from trees import ASSIGN, SKIP, SEQ, IF, WHILE
+from trees import ADD, ASSIGN, IF, INT, MULT, SKIP, SEQ, SUB, VAR, WHILE
 
 
 class CFGNode:
@@ -85,14 +86,45 @@ def _get_node_description(ast_node):
     if ast_node.type == ASSIGN:
         # Format: "x := expression"
         var_name = ast_node.children[0].value if ast_node.children else "?"
-        return f"{var_name} := ..."
+        rhs = (_reconstruct_expr_from_ast(ast_node.children[1])
+               if ast_node.children else "?")
+        return f"{var_name} := {rhs}"
     elif ast_node.type == SKIP:
         return "skip"
-    elif ast_node.value in ['WHILE', 'IF']:
+    elif ast_node.type in [WHILE, IF]:
         # For conditions, we'll use a generic description
-        return f"[condition]"
+        cond_expr = _reconstruct_expr_from_ast(ast_node)
+        return f"{ast_node.type}: {cond_expr}"
     else:
         return str(ast_node.value) if ast_node.value else str(ast_node.type)
+
+def _reconstruct_expr_from_ast(node):
+    '''
+    (Re-)construct an expression, such as 3, x + y, 2 * z, etc., from
+    the root node for the expression in an AST. The root node for an
+    integer value 3, e.g., would have type INT and a value of 3.
+    The root node for the expression x + y would have a
+    root node with type ADD and value '+', with two children for the
+    expressions. The root node for an IF or WHILE loop has the
+    condition information in the first child node.
+    Returns "X" for unrecognized or incorrectly formatted nodes.
+    '''
+    if node.type in [INT, VAR]:
+        return node.value
+    elif node.type in [ADD, MULT, SUB]:
+        op_symbol = node.value
+        lhs = _reconstruct_expr_from_ast(node.children[0])
+        rhs = _reconstruct_expr_from_ast(node.children[1])
+        return f"{lhs} {op_symbol} {rhs}"
+    elif node.type in [IF, WHILE]:
+        condition_node = node.children[0]
+        op_symbol = condition_node.value
+        lhs = _reconstruct_expr_from_ast(condition_node.children[0])
+        rhs = _reconstruct_expr_from_ast(condition_node.children[1])
+        return f"{lhs} {op_symbol} {rhs}"
+    else:
+        return f"X"
+
 
 
 def ast_to_cfg(ast_root):
@@ -186,10 +218,11 @@ def ast_to_cfg(ast_root):
             
             # Create CFG node for condition
             if condition_node_ast.l is not None:
+                condition = _get_node_description(ast_node)
                 condition_cfg_node = CFGNode(
                     label=condition_node_ast.l,
                     node_type='condition',
-                    content='[condition]',
+                    content=f'{condition}',
                     ast_node=condition_node_ast
                 )
                 cfg.add_node(condition_cfg_node)
@@ -257,10 +290,11 @@ def ast_to_cfg(ast_root):
             
             # Create CFG node for condition
             if condition_node_ast.l is not None:
+                condition = _get_node_description(ast_node)
                 condition_cfg_node = CFGNode(
                     label=condition_node_ast.l,
                     node_type='condition',
-                    content='[condition]',
+                    content=f"{condition}",
                     ast_node=condition_node_ast
                 )
                 cfg.add_node(condition_cfg_node)
@@ -340,7 +374,7 @@ def generate_cfg_dot(cfg, filename="cfg.dot"):
     # Add all nodes
     for node in cfg.nodes:
         if node.label is not None:
-            label_str = f"Label {node.label}\\n{node.content}"
+            label_str = f"{node.label}\\n{node.content}"
         else:
             label_str = node.content
         
