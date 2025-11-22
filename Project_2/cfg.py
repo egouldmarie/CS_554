@@ -8,7 +8,8 @@ description:  Implements Control Flow Graph (CFG) data structures and
               Created for CS 554 (Compiler Construction) at UNM.
 """
 
-from trees import ADD, ASSIGN, IF, INT, MULT, SKIP, SEQ, SUB, VAR, WHILE
+from trees import (
+        ADD, ASSIGN, IF, INT, MULT, NOT, SKIP, SEQ, SUB, VAR, WHILE)
 
 
 class CFGNode:
@@ -119,8 +120,23 @@ def _reconstruct_expr_from_ast(node):
     elif node.type in [IF, WHILE]:
         condition_node = node.children[0]
         op_symbol = condition_node.value
-        lhs = _reconstruct_expr_from_ast(condition_node.children[0])
-        rhs = _reconstruct_expr_from_ast(condition_node.children[1])
+        # NOT vs. {=, <=, <, >=, >}
+        if op_symbol in [NOT, 'NOT']:
+            not_expr = _reconstruct_expr_from_ast(condition_node)
+            return f"{not_expr}"
+        # lhs = _reconstruct_expr_from_ast(condition_node.children[0])
+        # rhs = _reconstruct_expr_from_ast(condition_node.children[1])
+        # return f"{lhs} {op_symbol} {rhs}"
+        rel_expr = _reconstruct_expr_from_ast(condition_node)
+        return f"{rel_expr}"
+    elif node.type in [NOT, 'NOT']:
+        op_symbol = node.value
+        inside_not_expr  = _reconstruct_expr_from_ast(node.children[0])
+        return f"{op_symbol} [{inside_not_expr}]"
+    elif node.type in ['=', '<=', '<', '>=', '>']:
+        op_symbol = node.value
+        lhs = _reconstruct_expr_from_ast(node.children[0])
+        rhs = _reconstruct_expr_from_ast(node.children[1])
         return f"{lhs} {op_symbol} {rhs}"
     else:
         return f"X"
@@ -146,6 +162,8 @@ def ast_to_cfg(ast_root):
     cfg.exit_node = exit_node
     cfg.add_node(entry_node)
     cfg.add_node(exit_node)
+
+    print("CFG entry and exit nodes constructed.")
     
     def process_statement(ast_node, current_chain_end):
         """
@@ -347,6 +365,7 @@ def ast_to_cfg(ast_root):
     
     # Process the entire AST starting from entry
     last_node = process_statement(ast_root, cfg.entry_node)
+    print("Processing of statements completed.")
     
     # Connect the last node to exit
     if last_node is not None:
