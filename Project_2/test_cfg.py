@@ -30,11 +30,12 @@ def test_cfg_simple():
     
     # Parse
     parser = Parser(tokens)
-    parse_tree, ast, ast_2 = parser.parse()
+    parse_tree, ast = parser.parse()
+    ast = ast.root
     
     # Decorate AST
     TreeNode._next_id = 0
-    decorate_ast(ast_2)
+    decorate_ast(ast)
     
     print("\nDecorated AST labels:")
     def print_labels(node, indent=0):
@@ -42,10 +43,10 @@ def test_cfg_simple():
             print("  " * indent + f"Label {node.l}: {node.type} - {node.value}")
         for child in node.children:
             print_labels(child, indent + 1)
-    print_labels(ast_2)
+    print_labels(ast)
     
     # Generate CFG
-    cfg = ast_to_cfg(ast_2)
+    cfg = ast_to_cfg(ast)
     
     print("\n" + "=" * 70)
     print("CFG Structure:")
@@ -72,14 +73,15 @@ def test_cfg_sequence():
     # Tokenize and parse
     tokens = list(Tokenize(while_code))
     parser = Parser(tokens)
-    parse_tree, ast, ast_2 = parser.parse()
+    parse_tree, ast = parser.parse()
+    ast = ast.root
     
     # Decorate AST
     TreeNode._next_id = 0
-    decorate_ast(ast_2)
+    decorate_ast(ast)
     
     # Generate CFG
-    cfg = ast_to_cfg(ast_2)
+    cfg = ast_to_cfg(ast)
     
     print("\n" + "=" * 70)
     print("CFG Structure:")
@@ -106,14 +108,15 @@ def test_cfg_if():
     # Tokenize and parse
     tokens = list(Tokenize(while_code))
     parser = Parser(tokens)
-    parse_tree, ast, ast_2 = parser.parse()
+    parse_tree, ast = parser.parse()
+    ast = ast.root
     
     # Decorate AST
     TreeNode._next_id = 0
-    decorate_ast(ast_2)
+    decorate_ast(ast)
     
     # Generate CFG
-    cfg = ast_to_cfg(ast_2)
+    cfg = ast_to_cfg(ast)
     
     print("\n" + "=" * 70)
     print("CFG Structure:")
@@ -140,14 +143,15 @@ def test_cfg_while():
     # Tokenize and parse
     tokens = list(Tokenize(while_code))
     parser = Parser(tokens)
-    parse_tree, ast, ast_2 = parser.parse()
+    parse_tree, ast = parser.parse()
+    ast = ast.root
     
     # Decorate AST
     TreeNode._next_id = 0
-    decorate_ast(ast_2)
+    decorate_ast(ast)
     
     # Generate CFG
-    cfg = ast_to_cfg(ast_2)
+    cfg = ast_to_cfg(ast)
     
     print("\n" + "=" * 70)
     print("CFG Structure:")
@@ -175,14 +179,15 @@ def test_cfg_factorial():
     # Tokenize and parse
     tokens = list(Tokenize(while_code))
     parser = Parser(tokens)
-    parse_tree, ast, ast_2 = parser.parse()
+    parse_tree, ast = parser.parse()
+    ast = ast.root
     
     # Decorate AST
     TreeNode._next_id = 0
-    decorate_ast(ast_2)
+    decorate_ast(ast)
     
     # Generate CFG
-    cfg = ast_to_cfg(ast_2)
+    cfg = ast_to_cfg(ast)
     
     print("\n" + "=" * 70)
     print("CFG Structure:")
@@ -192,6 +197,119 @@ def test_cfg_factorial():
     # Generate DOT file
     generate_cfg_dot(cfg, "test_factorial_cfg.dot")
     print("\nCFG DOT file saved to: test_factorial_cfg.dot")
+    
+    return cfg
+
+def test_cfg_collatz():
+    """Test CFG generation with factorial program"""
+    print("\n" + "=" * 70)
+    print("Test 6: Collatz Program")
+    print("=" * 70)
+    
+    # Read the collatz program
+    with open("tests/good_syntax/example6-collatz.while", "r") as f:
+        while_code = f.read()
+    
+    print(f"\nInput code:\n{while_code}\n")
+    
+    # Tokenize and parse
+    tokens = list(Tokenize(while_code))
+    parser = Parser(tokens)
+    parse_tree, ast = parser.parse()
+    ast = ast.root
+    
+    # Decorate AST
+    TreeNode._next_id = 0
+    decorate_ast(ast)
+    
+    # Generate CFG
+    cfg = ast_to_cfg(ast)
+    
+    print("\n" + "=" * 70)
+    print("CFG Structure:")
+    print("=" * 70)
+    print_cfg(cfg)
+    
+    # Generate DOT file
+    generate_cfg_dot(cfg, "test_collatz_cfg.dot")
+    print("\nCFG DOT file saved to: test_collatz_cfg.dot")
+    
+    return cfg
+
+def test_cfg_fibonacci():
+    """Test CFG generation with fibonacci program"""
+    print("\n" + "=" * 70)
+    print("Test 7: Fibonacci Program")
+    print("=" * 70)
+    
+    # Read the collatz program
+    with open("tests/good_syntax/example13-fibonacci.while", "r") as f:
+        while_code = f.read()
+    
+    print(f"\nInput code:\n{while_code}\n")
+    
+    # Tokenize and parse
+    tokens = list(Tokenize(while_code))
+    parser = Parser(tokens)
+    parse_tree, ast = parser.parse()
+    ast = ast.root
+    
+    # Decorate AST
+    TreeNode._next_id = 0
+    decorate_ast(ast)
+    
+    # Generate CFG
+    cfg = ast_to_cfg(ast)
+    
+    print("\n" + "=" * 70)
+    print("CFG Structure:")
+    print("=" * 70)
+    print_cfg(cfg)
+    
+    # Generate DOT file
+    generate_cfg_dot(cfg, "test_fibonacci_cfg.dot")
+    print("\nCFG DOT file saved to: test_fibonacci_cfg.dot")
+    
+    return cfg
+
+def test_cfg_primes_counter():
+    """Test CFG generation with primes counter program"""
+    print("\n" + "=" * 70)
+    print("Test 7: Primes Counter Program")
+    print("=" * 70)
+    
+    # Read the collatz program
+    with open("tests/good_syntax/primescounter.while", "r") as f:
+        while_code = f.read()
+    
+    print(f"\nInput code:\n{while_code}\n")
+    
+    # Tokenize and parse
+    tokens = list(Tokenize(while_code))
+    print("Tokenization complete.")
+    parser = Parser(tokens)
+    print("Parser initialized.")
+    parse_tree, ast = parser.parse()
+    print("Parsing complete.")
+    ast = ast.root
+    
+    # Decorate AST
+    TreeNode._next_id = 0
+    decorate_ast(ast)
+    print("AST decoration complete.")
+    
+    # Generate CFG
+    cfg = ast_to_cfg(ast)
+    print("CFG generation complete.")
+    
+    print("\n" + "=" * 70)
+    print("CFG Structure:")
+    print("=" * 70)
+    print_cfg(cfg)
+    
+    # Generate DOT file
+    generate_cfg_dot(cfg, "test_primes_counter_cfg.dot")
+    print("\nCFG DOT file saved to: test_primes_counter_cfg.dot")
     
     return cfg
 
@@ -207,6 +325,9 @@ if __name__ == "__main__":
         test_cfg_if()
         test_cfg_while()
         test_cfg_factorial()
+        test_cfg_collatz()
+        test_cfg_fibonacci()
+        test_cfg_primes_counter()
         
         print("\n" + "=" * 70)
         print("All tests completed!")
@@ -217,6 +338,9 @@ if __name__ == "__main__":
         print("  - test_if_cfg.dot")
         print("  - test_while_cfg.dot")
         print("  - test_factorial_cfg.dot")
+        print("  - test_collatz_cfg.dot")
+        print("  - test_fibonacci_cfg.dot")
+        print("  - test_primes_counter_cfg.dot")
         print("\nYou can view these files in Graphviz or VSCode with Graphviz extension.")
         
     except Exception as e:
