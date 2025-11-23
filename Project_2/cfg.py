@@ -1,13 +1,15 @@
 """
-filename:     cfg.py
-authors:      Auto-generated for Project 2
-created:      2025-11/18
+filename:     codegen.py
+authors:      Jaime Gould, Qinghong Shao, Warren Craft
+created:      2025-11-18
+last updated: 2025-11-23
 description:  Implements Control Flow Graph (CFG) data structures and
               conversion from decorated AST to CFG.
               Created for CS 554 (Compiler Construction) at UNM.
 """
 
-from trees import ASSIGN, SKIP, SEQ, IF, WHILE
+from trees import (
+        ADD, ASSIGN, IF, INT, MULT, NOT, SKIP, SEQ, SUB, VAR, WHILE)
 
 
 class CFGNode:
@@ -85,14 +87,53 @@ def _get_node_description(ast_node):
     if ast_node.type == ASSIGN:
         # Format: "x := expression"
         var_name = ast_node.children[0].value if ast_node.children else "?"
-        return f"{var_name} := ..."
+        rhs = (_reconstruct_expr_from_ast(ast_node.children[1])
+               if ast_node.children else "?")
+        return f"{var_name} := {rhs}"
     elif ast_node.type == SKIP:
         return "skip"
-    elif ast_node.value in ['WHILE', 'IF']:
-        # For conditions, we'll use a generic description
-        return f"[condition]"
+    elif ast_node.type in [WHILE, IF]:
+        # For conditions, extract the condition expression from children[0]
+        # Do NOT pass the entire IF/WHILE node to _reconstruct_expr_from_ast
+        # to prevent infinite recursion
+        if ast_node.children and len(ast_node.children) > 0:
+            condition_node = ast_node.children[0]
+            cond_expr = _reconstruct_expr_from_ast(condition_node)
+            return f"{ast_node.type}: {cond_expr}"
+        else:
+            return f"{ast_node.type}: [condition]"
     else:
         return str(ast_node.value) if ast_node.value else str(ast_node.type)
+
+def _reconstruct_expr_from_ast(node, depth=0, max_depth=50):
+    # Prevent infinite recursion
+    if depth > max_depth:
+        return "X"
+    
+    if node is None:
+        return "X"
+    
+    if node.type in [INT, VAR]:
+        return node.value
+    elif node.type in [ADD, MULT, SUB]:
+        op_symbol = node.value
+        lhs = _reconstruct_expr_from_ast(node.children[0], depth + 1, max_depth) if node.children else "X"
+        rhs = _reconstruct_expr_from_ast(node.children[1], depth + 1, max_depth) if len(node.children) > 1 else "X"
+        return f"{lhs} {op_symbol} {rhs}"
+    elif node.type in [NOT, 'NOT']:
+        op_symbol = node.value
+        inside_not_expr = _reconstruct_expr_from_ast(node.children[0], depth + 1, max_depth) if node.children else "X"
+        return f"{op_symbol} [{inside_not_expr}]"
+    elif node.type in ['=', '<=', '<', '>=', '>']:
+        op_symbol = node.value
+        lhs = _reconstruct_expr_from_ast(node.children[0], depth + 1, max_depth) if node.children else "X"
+        rhs = _reconstruct_expr_from_ast(node.children[1], depth + 1, max_depth) if len(node.children) > 1 else "X"
+        return f"{lhs} {op_symbol} {rhs}"
+    # Do NOT handle IF/WHILE here - they are statements, not expressions
+    # This prevents infinite recursion when condition_node is itself an IF/WHILE
+    else:
+        return f"X"
+
 
 
 def ast_to_cfg(ast_root):
@@ -114,18 +155,28 @@ def ast_to_cfg(ast_root):
     cfg.exit_node = exit_node
     cfg.add_node(entry_node)
     cfg.add_node(exit_node)
+
+    print("CFG entry and exit nodes constructed.")
     
-    def process_statement(ast_node, current_chain_end):
+    def process_statement(ast_node, current_chain_end, depth=0, max_depth=100):
         """
         Process an AST statement node and return the last CFG node in its chain.
         
         Args:
             ast_node: Current AST node to process
             current_chain_end: The last CFG node in the current chain (to connect to)
+            depth: Current recursion depth (for preventing infinite recursion)
+            max_depth: Maximum allowed recursion depth
             
         Returns:
             The last CFG node in the processed chain
         """
+        # Prevent infinite recursion
+        if depth > max_depth:
+            print(f"WARNING: Maximum recursion depth ({max_depth}) exceeded in process_statement")
+            print(f"  Node type: {ast_node.type if ast_node else 'None'}")
+            return current_chain_end
+        
         if ast_node is None:
             return current_chain_end
         
@@ -133,8 +184,8 @@ def ast_to_cfg(ast_root):
         if ast_node.type == SEQ:
             chain_end = current_chain_end
             # Process each child in sequence
-            for child in ast_node.children:
-                chain_end = process_statement(child, chain_end)
+            for i, child in enumerate(ast_node.children):
+                chain_end = process_statement(child, chain_end, depth + 1, max_depth)
             return chain_end
         
         # Handle assignment statements
@@ -186,10 +237,11 @@ def ast_to_cfg(ast_root):
             
             # Create CFG node for condition
             if condition_node_ast.l is not None:
+                condition = _get_node_description(ast_node)
                 condition_cfg_node = CFGNode(
                     label=condition_node_ast.l,
                     node_type='condition',
-                    content='[condition]',
+                    content=f'{condition}',
                     ast_node=condition_node_ast
                 )
                 cfg.add_node(condition_cfg_node)
@@ -201,31 +253,79 @@ def ast_to_cfg(ast_root):
                 condition_cfg_node = current_chain_end
             
             # Process true branch
-            true_end = process_statement(true_block_ast, None)
+            true_end = process_statement(true_block_ast, None, depth + 1, max_depth)
             
             # Process else branch
-            else_end = process_statement(else_block_ast, None) if else_block_ast else None
+            else_end = process_statement(else_block_ast, None, depth + 1, max_depth) if else_block_ast else None
             
             # Connect condition to branches (true and false)
             if true_end is not None:
                 # Find the first node in the true branch
+                # Avoid infinite loops by using visited set and depth limit
                 true_start = true_end
-                while true_start.predecessors:
-                    pred = true_start.predecessors[0]
-                    if pred == condition_cfg_node:
+                visited = set()
+                max_search_depth = 50
+                search_depth = 0
+                
+                while (true_start.predecessors and 
+                       true_start not in visited and 
+                       search_depth < max_search_depth):
+                    visited.add(true_start)
+                    search_depth += 1
+                    
+                    # Check if condition is already a predecessor
+                    if condition_cfg_node in true_start.predecessors:
                         break
-                    true_start = pred
-                condition_cfg_node.add_successor(true_start)
+                    
+                    # Get a predecessor that's not condition and not already visited
+                    found_pred = None
+                    for pred in true_start.predecessors:
+                        if pred != condition_cfg_node and pred not in visited:
+                            found_pred = pred
+                            break
+                    
+                    if found_pred is not None:
+                        true_start = found_pred
+                    else:
+                        # All predecessors are condition or already visited
+                        break
+                
+                if true_start != condition_cfg_node:
+                    condition_cfg_node.add_successor(true_start)
             
             if else_end is not None:
                 # Find the first node in the else branch
+                # Avoid infinite loops by using visited set and depth limit
                 else_start = else_end
-                while else_start.predecessors:
-                    pred = else_start.predecessors[0]
-                    if pred == condition_cfg_node:
+                visited = set()
+                max_search_depth = 50
+                search_depth = 0
+                
+                while (else_start.predecessors and 
+                       else_start not in visited and 
+                       search_depth < max_search_depth):
+                    visited.add(else_start)
+                    search_depth += 1
+                    
+                    # Check if condition is already a predecessor
+                    if condition_cfg_node in else_start.predecessors:
                         break
-                    else_start = pred
-                condition_cfg_node.add_successor(else_start)
+                    
+                    # Get a predecessor that's not condition and not already visited
+                    found_pred = None
+                    for pred in else_start.predecessors:
+                        if pred != condition_cfg_node and pred not in visited:
+                            found_pred = pred
+                            break
+                    
+                    if found_pred is not None:
+                        else_start = found_pred
+                    else:
+                        # All predecessors are condition or already visited
+                        break
+                
+                if else_start != condition_cfg_node:
+                    condition_cfg_node.add_successor(else_start)
             elif true_end is None:
                 # Both branches empty - condition points to merge/exit
                 pass
@@ -257,10 +357,11 @@ def ast_to_cfg(ast_root):
             
             # Create CFG node for condition
             if condition_node_ast.l is not None:
+                condition = _get_node_description(ast_node)
                 condition_cfg_node = CFGNode(
                     label=condition_node_ast.l,
                     node_type='condition',
-                    content='[condition]',
+                    content=f"{condition}",
                     ast_node=condition_node_ast
                 )
                 cfg.add_node(condition_cfg_node)
@@ -271,39 +372,27 @@ def ast_to_cfg(ast_root):
             else:
                 condition_cfg_node = current_chain_end
             
-            # Process while body independently
-            # We'll connect condition to body start and body end back to condition
-            body_end = process_statement(while_block_ast, None)
+            # Process while body - pass condition node as the entry point
+            # This way, the first node in the body will automatically connect to condition
+            body_end = process_statement(while_block_ast, condition_cfg_node, depth + 1, max_depth)
             
-            # Connect condition to body (true branch) and body back to condition (loop)
-            if body_end is not None:
-                # Find the first node in the body chain
-                # The first node is the one with no predecessors (except possibly condition)
-                body_start = body_end
-                # Traverse backwards to find the first node
-                while body_start.predecessors:
-                    # Check if all predecessors are condition (shouldn't happen) or find the real first
-                    all_are_condition = all(p == condition_cfg_node for p in body_start.predecessors)
-                    if all_are_condition or len(body_start.predecessors) == 0:
-                        break
-                    # Get a predecessor that's not condition
-                    for pred in body_start.predecessors:
-                        if pred != condition_cfg_node:
-                            body_start = pred
-                            break
-                    else:
-                        break
-                
-                # Connect condition to body start (true branch)
-                condition_cfg_node.add_successor(body_start)
-                # Connect body end back to condition (loop back)
-                body_end.add_successor(condition_cfg_node)
-            else:
+            # Connect body end back to condition (loop back)
+            # This is the back edge of the while loop
+            if body_end is not None and body_end != condition_cfg_node:
+                # Only connect if body_end is NOT another while's condition node
+                # If body_end is another while's condition, it already has its own loop back edge
+                # and we should NOT create an additional edge from it to this condition
+                if body_end.node_type != 'condition':
+                    # body_end is a regular statement node, connect it back to condition
+                    body_end.add_successor(condition_cfg_node)
+                # else: body_end is another while's condition node, skip the connection
+                # (it will be handled by that while loop's own loop back logic)
+            elif body_end is None:
                 # Empty body - condition's true branch points back to itself
                 condition_cfg_node.add_successor(condition_cfg_node)
             
             # The condition node has two successors:
-            # 1. Body start (if true) - connected above
+            # 1. Body start (if true) - connected above via process_statement
             # 2. Exit (if false) - will be connected when we return from this function
             
             return condition_cfg_node
@@ -312,7 +401,14 @@ def ast_to_cfg(ast_root):
         return current_chain_end
     
     # Process the entire AST starting from entry
-    last_node = process_statement(ast_root, cfg.entry_node)
+    print(f"Starting to process AST root (type: {ast_root.type if ast_root else 'None'})...")
+    try:
+        last_node = process_statement(ast_root, cfg.entry_node, depth=0, max_depth=100)
+        print("Processing of statements completed.")
+    except RecursionError as e:
+        print(f"ERROR: RecursionError occurred: {e}")
+        print("This indicates an infinite recursion in process_statement")
+        raise
     
     # Connect the last node to exit
     if last_node is not None:
@@ -340,7 +436,7 @@ def generate_cfg_dot(cfg, filename="cfg.dot"):
     # Add all nodes
     for node in cfg.nodes:
         if node.label is not None:
-            label_str = f"Label {node.label}\\n{node.content}"
+            label_str = f"{node.label}\\n{node.content}"
         else:
             label_str = node.content
         
