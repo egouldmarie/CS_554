@@ -22,6 +22,7 @@ from trees import (
     decorate_ast, insert_labels, generate_dot_from_tree,
     convert_nested_tuple_parse_tree_to_tree,
     convert_nested_tuple_ast_to_tree)
+from cfg import ast_to_cfg, generate_cfg_dot
 
 if __name__ == "__main__":
 
@@ -45,9 +46,13 @@ if __name__ == "__main__":
     decorated_tree_path = args.filename[:idx] + "trees/decorated/"
     os.makedirs(os.path.dirname(decorated_tree_path), exist_ok=True)
 
+    cfg_path = args.filename[:idx] + "trees/cfg/"
+    os.makedirs(os.path.dirname(cfg_path), exist_ok=True)
+
     ast_file = tree_path+file_name+"_ast_tree.dot"
     parse_file = tree_path+file_name+"_parse_tree.dot"
     decorated_ast_file = decorated_tree_path+file_name+"_ast_tree.dot"
+    cfg_file = cfg_path+file_name+"_cfg.dot"
 
     labeled_path = args.filename[:idx] + "labeled/"
     os.makedirs(os.path.dirname(labeled_path), exist_ok=True)
@@ -130,11 +135,23 @@ if __name__ == "__main__":
     print(f"\nLabeled code saved to: {labeled_source}\n")
 
     # ======================================== #
+    # Generate Control Flow Graph (CFG)        #
+    # ======================================== #
+    print("\nGenerating Control Flow Graph (CFG)...")
+    print("-" * 70)
+    cfg = ast_to_cfg(ast)
+    generate_cfg_dot(cfg, filename=cfg_file)
+    print(f"CFG DOT file saved to: {cfg_file}")
+    print(f"CFG contains {len(cfg.nodes)} nodes.")
+    print("-" * 70)
+    print()
+
+    # ======================================== #
     # Generate, display, and save to .s file   #
     # the RISC-V assembly code                 #
     # ======================================== #
     codegen = RISC_V_CodeGenerator(function_name)
-    assembly = codegen.generate(ast)
+    assembly = codegen.generate(cfg)  # Generate from CFG instead of AST
     print("\nRISC-V Assembly Code:")
     print("-" * 70)
     print(assembly)
