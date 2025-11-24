@@ -21,9 +21,14 @@ class RISC_V_CodeGenerator:
         """
         self.code = []
         self.name = name
+
+        self.pointer = 0
+        self.max_stack = 0
+
         self.var_map = {}       # Map variable names to s registers (s1, s2, s3, ...)
         self.label_counter = 0
         self.variables = []     # List of all variables in order
+
         self.cfg = None          # The CFG being processed
         self.visited_nodes = set()  # Track visited CFG nodes
         self.label_to_asm_label = {}  # Map CFG label to assembly label
@@ -52,7 +57,7 @@ class RISC_V_CodeGenerator:
             ">": "    slt t0, t1, t0",
             ">=": "    slt t0, t0, t1\n    xori t0, t0, 1"
         }
-    
+
     def gen(self, instruction):
         """
         Add instruction to code list
@@ -76,15 +81,17 @@ class RISC_V_CodeGenerator:
         # Collect variables from CFG nodes
         self._collect_variables_from_cfg()
         
-        # Generate function prologue (load variables into s registers)
-        self._emit_function_prologue()
-        
         # Generate code from CFG starting from entry node
         if cfg.entry_node:
             self._generate_from_cfg(cfg.entry_node)
         
+        # Generate function prologue (load variables into s registers)
+        self._emit_function_prologue()
+
         # Generate function epilogue (save s registers back to memory)
         self._emit_function_epilogue()
+
+        self.code = self.prologue + self.code + self.epilogue
         
         return "\n".join(self.code)
     
@@ -121,35 +128,53 @@ class RISC_V_CodeGenerator:
         """
         Generate function prologue - load variables from memory into s registers
         """
-        self.gen(f".globl {self.name}")
-        self.gen(".text")
-        self.gen(f"{self.name}:")
-        self.gen("    # Function prologue")
-        self.gen("    # Variable array pointer in a0")
+        self.prologue = []
+        self.prologue.append(f".globl {self.name}")
+        self.prologue.append(".text")
+        self.prologue.append(f"{self.name}:")
+        self.prologue.append("    # Function prologue")
+        # allocate stack
+        self.prologue.append("    # Allocate stack")
+        self.prologue.append(f"    addi sp, sp, -{8*self.max_stack}")
+        self.prologue.append("    # Variable array pointer in a0")
         
         # Load each variable into its corresponding s register
         for i, var in enumerate(self.variables):
             offset = i * 8  # offset = index * 8 (first variable at offset 0)
             s_reg = self.var_map[var]
-            self.gen(f"    # {s_reg}<-input")
-            self.gen(f"    ld {s_reg}, {offset}(a0)")
+            self.prologue.append(f"    # {s_reg}<-{var}")
+            self.prologue.append(f"    ld {s_reg}, {offset}(a0)")
         
-        self.gen("")
+        self.prologue.append("")
     
     def _emit_function_epilogue(self):
         """
         Generate function epilogue - save s registers back to memory
         """
-        self.gen("    # Function epilogue")
-        
+        self.epilogue = []
+        self.epilogue.append("    # Function epilogue")
+        # deallocate stack
+        self.epilogue.append("    # Deallocate stack")
+        self.epilogue.append(f"    addi sp, sp, {8*self.max_stack}")
+
         # Save each variable from its s register back to memory
         for i, var in enumerate(self.variables):
             offset = i * 8  # offset = index * 8
             s_reg = self.var_map[var]
-            self.gen(f"    # output<-{s_reg}")
-            self.gen(f"    sd {s_reg}, {offset}(a0)")
+            self.epilogue.append(f"    # {var}<-{s_reg}")
+            self.epilogue.append(f"    sd {s_reg}, {offset}(a0)")
         
-        self.gen("    ret")
+        self.epilogue.append("    ret")
+    
+    def _push(self, register="t0"):
+        self.gen(f"    sd {register}, {self.pointer*8}(sp)")
+        self.pointer = self.pointer + 1
+        if self.pointer > self.max_stack:
+            self.max_stack = self.pointer
+    
+    def _pop(self, register="t0"):
+        self.gen(f"    ld {register}, {self.pointer*8}(sp)")
+        self.pointer = self.pointer - 1
     
     def _generate_from_cfg(self, cfg_node):
         """
@@ -249,7 +274,7 @@ class RISC_V_CodeGenerator:
         
         # Generate expression code - result will be in a temporary s register
         # Use t0 as temporary, then move to var_reg
-        result_reg = self._generate_expression_cfg(expr, "t0")
+        result_reg = self._generate_expression_cfg(expr)
         
         # Move result to variable's s register
         if result_reg != var_reg:
@@ -291,7 +316,7 @@ class RISC_V_CodeGenerator:
             return
         
         # Generate condition expression - result in t0
-        result_reg = self._generate_expression_cfg(condition_expr, "t0")
+        result_reg = self._generate_expression_cfg(condition_expr)
         
         if len(cfg_node.successors) >= 2:
             # Has true and false branches
@@ -376,45 +401,7 @@ class RISC_V_CodeGenerator:
                 self._generate_from_cfg(successor)
         # else: no successors (shouldn't happen, but handled by caller)
     
-    def _generate_while_statement(self, node):
-        """
-        Generate while statement code
-        """
-        condition = node.children[0]
-        body = node.children[1]
-        
-        # Generate labels
-        label = self._new_label()
-        loop_label = "while_" + label
-        end_label = "end_" + label
-        
-        #self.gen("")
-        #self.gen(f"    # While Statement")
-        self.gen(f"{loop_label}:")
-        
-        # Generate condition code
-        #self.gen(f"    # Condition")
-        #self.gen("    # [")
-        #l = self.l
-        #self.l = self.l+1
-        self._generate_expression(condition)
-        #self.gen(f"    # ]{l}")
-        self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
-        
-        # Conditional jump
-        #self.gen("")
-        self.gen(f"    beqz t0, {end_label}")
-        
-        # Do
-        #self.gen(f"    # Do")
-        self._generate_statement(body)
-
-        #self.gen("")        
-        self.gen(f"    j {loop_label}")
-        #self.gen(f"    # Od")
-        self.gen(f"{end_label}:")
-
-    def _generate_expression_cfg(self, node, result_reg=None):
+    def _generate_expression_cfg(self, node, result_reg="t0"):
         """
         Generate expression code using s registers, return the register containing result
         
@@ -425,11 +412,7 @@ class RISC_V_CodeGenerator:
         Returns:
             String name of s register containing the result
         """
-        if result_reg is None:
-            # Allocate a temporary s register
-            # We'll use t0 for temporary calculations (it's not used for variables)
-            result_reg = "t0"
-        
+
         if node.type == "int":
             # Integer constant
             value = node.value
@@ -438,38 +421,31 @@ class RISC_V_CodeGenerator:
         elif node.type == "var":
             # Variable - get its s register
             var_name = node.value
-            if var_name in self.var_map:
-                var_reg = self.var_map[var_name]
-                # If result_reg is different, copy
-                if result_reg != var_reg:
-                    self.gen(f"    mv {result_reg}, {var_reg}")
-                return result_reg
-            else:
-                # Variable not found, use 0
-                self.gen(f"    li {result_reg}, 0")
-                return result_reg
+            return self.var_map[var_name]
         elif node.type in ["true", "false"]:
             # Boolean constant
             if node.type == "true":
                 self.gen(f"    li {result_reg}, 1")
+                return result_reg
             else:
-                self.gen(f"    li {result_reg}, 0")
-            return result_reg
+                return "x0"     # x0 always contains 0
         elif node.type in ["add", "sub", "mult", "=", "<", ">", "<=", ">=", "and", "or"]:
             # Binary operation
-            # Evaluate left operand into result_reg
-            left_reg = self._generate_expression_cfg(node.children[0], result_reg)
-            
-            # Evaluate right operand into a temporary register (t0 if available, or reuse)
-            # We need a second register for the operation
-            right_reg = "t0" if result_reg != "t0" else "t1"  # Use t1 as fallback if t0 is in use
-            
-            # If result_reg is t0, we need to use a different register for right operand
-            if result_reg == "t0":
-                right_reg = "t1"  # Use t1 temporarily
-            
-            right_reg = self._generate_expression_cfg(node.children[1], right_reg)
-            
+            # Evaluate left expression
+            left_reg = self._generate_expression_cfg(node.children[0])
+
+            # Evaluate right expression
+            if left_reg == "t0" and node.children[1].type not in ["int", "var"]:
+                # push into stack
+                self._push(left_reg)
+                # right_reg = t0
+                right_reg = self._generate_expression_cfg(node.children[1])
+                left_reg = "t1"
+                self._pop(left_reg)
+            else:
+                # left_reg = t0, right_reg = t1
+                right_reg = self._generate_expression_cfg(node.children[1], "t1")
+
             # Perform operation
             if node.type == "add":
                 self.gen(f"    add {result_reg}, {left_reg}, {right_reg}")

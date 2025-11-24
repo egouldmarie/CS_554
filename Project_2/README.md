@@ -41,5 +41,3 @@ Project 2 - Release 2 (v2.2)
 |`primescounter`|1000|0.063||
 |`primescounter`|10000|13.22||
 |`veryveryverysimpleloop`|1000000000|17.186||
-
-&Jlqou8^w$w8%sYG

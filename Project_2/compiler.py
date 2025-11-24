@@ -16,7 +16,7 @@ import subprocess
 
 from parser import Parser
 from scanner import Tokenize
-from codegen2 import RISC_V_CodeGenerator
+from codegen import RISC_V_CodeGenerator
 from trees import decorate_ast, insert_labels, generate_dot_from_tree
 from cfg import ast_to_cfg, generate_cfg_dot
 
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     # the RISC-V assembly code                 #
     # ======================================== #
     codegen = RISC_V_CodeGenerator(function_name)
-    assembly = codegen.generate(ast)  # Generate from CFG instead of AST
+    assembly = codegen.generate(cfg)  # Generate from CFG instead of AST
     print("\nRISC-V Assembly Code:")
     print("-" * 70)
     print(assembly)
