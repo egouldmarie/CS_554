@@ -7,15 +7,15 @@ example6_collatz:
     # Variable array pointer in a0
     # s1<-input
     ld s1, 0(a0)
-    # s2<-input
+    # s2<-n
     ld s2, 8(a0)
-    # s3<-input
+    # s3<-output
     ld s3, 16(a0)
-    # s4<-input
+    # s4<-quot
     ld s4, 24(a0)
-    # s5<-input
+    # s5<-rem
     ld s5, 32(a0)
-    # s6<-input
+    # s6<-steps
     ld s6, 40(a0)
 
 label_0:
@@ -81,16 +81,16 @@ label_12:
     # Function epilogue
     # Deallocate stack
     addi sp, sp, 0
-    # output<-s1
+    # input<-s1
     sd s1, 0(a0)
-    # output<-s2
+    # n<-s2
     sd s2, 8(a0)
     # output<-s3
     sd s3, 16(a0)
-    # output<-s4
+    # quot<-s4
     sd s4, 24(a0)
-    # output<-s5
+    # rem<-s5
     sd s5, 32(a0)
-    # output<-s6
+    # steps<-s6
     sd s6, 40(a0)
     ret
