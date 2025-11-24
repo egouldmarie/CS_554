@@ -4,10 +4,10 @@ authors:      Warren Craft
 author note:  based on earlier work authored with project partners
               Jaime Gould & Qinghong Shao
 created:      2025-11-23
-last updated: 2025-11-23
+last updated: 2025-11-24
 description:  Implements the C_CodeGenerator class to convert an
-              abstract syntax tree (AST) produced from the scanning
-              and parsing of a WHILE language program to C code.
+              abstract syntax tree (AST) (produced from the scanning
+              and parsing of a WHILE language program) to C code.
               Code based on the RISC_V_CodeGenerator class previously
               developed with co-authors Jaime Gould & Qing Shao.
               Created for CS 554 (Compiler Construction) at UNM.
@@ -22,7 +22,7 @@ class C_CodeGenerator:
     
     def __init__(self, name="generated_function"):
         """
-        Initialize RISC-V code generator
+        Initialize a C code generator.
         """
         self.code = []
         self.name = name
@@ -87,7 +87,8 @@ class C_CodeGenerator:
     def generate_2(self, ast) -> str:
         '''
         Primary code generation function, eventually generating
-        the entire C code file translation of the WHILE program.
+        the entire C code file translation of the WHILE program upon
+        which the AST is based.
         '''
         
         # Establish alpha-ordered list of all variables
@@ -96,12 +97,14 @@ class C_CodeGenerator:
         # Generate the initial part of the C code
         self._gen_c_file_start()
 
+        # Generate the WHILE-equivalent code from the AST
+        # TBA
+
         # Generate the end of the C code
         self._gen_c_file_end()
 
         return "\n".join(self.code)
 
-    
     def generate(self, ast) -> str:
         """
         Main code generation function
@@ -152,68 +155,76 @@ class C_CodeGenerator:
     
     def _gen_c_file_start(self):
         '''
-        Generate the standard initial content of the .c file.
+        Generate the standard initial content of the .c file, including
+        #includes, the initial construction of main(), and code for
+        reading in command line arguments and assigning values to
+        variables.
         '''
         num_vars = len(self.variables)
-        curly_bracketed_list_of_vars = "{" + ", ".join(self.variables) + "}"
         printVars = " ".join(self.variables)
+        # pre-construct code for displaying variable values
+        print_values = ""
+        for i in range(num_vars):
+            print_values += (
+                    f"    printf(\"{self.variables[i]} = %lld \\n\", "
+                    f"(long long)var_values[{i}]);\n"
+            )
 
         self.gen(f"#include <stdio.h>")
-        self.gen(f"#include <stlib.h>")
+        self.gen(f"#include <stdlib.h>")
         self.gen(f"")
         self.gen(f"int main(int argc, char *argv[]) {{")
         self.gen(f"")
         self.gen(f"    // Check if correct num of args provided")
-        self.gen(f"    if(argc != {num_vars + 1} " + "{")
+        self.gen(f"    if (argc != {num_vars + 1} " + "){")
         self.gen(f'        printf("Executable requires {num_vars} integer arguments.\\n");')
         self.gen(f'        printf("Usage: <filename> {printVars}\\n");')
         self.gen(f'        return EXIT_FAILURE;')
         self.gen(f'    }}')
         self.gen(f"")
-        self.gen(f"    // Establish array to store the {num_vars} var names")
-        self.gen(f"    char *variables[] = {curly_bracketed_list_of_vars};")
-        self.gen(f"")
         self.gen(f"    // Establish array to store the {num_vars} int values")
-        self.gen(f"    int64_t var_array[{num_vars}];")
+        self.gen(f"    int64_t var_values[{num_vars}];")
         self.gen(f"")
-        self.gen(f"    // Initialize the values")
+        self.gen(f"    // Store the user-supplied initial values.")
         self.gen(f"    for (int i = 0; i < {num_vars}; i++) " + "{")
-        self.gen(f"        var_array[i] = atoll(argv[i + 1]);")
+        self.gen(f"        var_values[i] = atoll(argv[i + 1]);")
         self.gen(f"    }}")
-        # self.gen(f"    // Process command line args for initial values")
-        # self.gen(f"    for (int i = 1; i < argc; i++) {{")
-        # self.gen(f"        int64_t value = atoll(argv[i]);")
-        # self.gen(f"        variables[i-1] = value;")
-        # self.gen(f"    }}")
+        self.gen(f"")
+        self.gen(f"    // Declare & initialize the variables.")
+    
+        # Generate commands to declare & init the variables
         for i in range(num_vars):
-            self.gen("    " + self.variables[i] + f" = var_array[{i+1}];")
+            self.gen("    int64_t " + self.variables[i] + f" = var_values[{i}];")
         self.gen(f"")
-        self.gen(f"    // Print initialized array values to verify:")
+        self.gen(f'    printf("Initial variable values are:\\n");')
+        self.gen(f"")
+
+        # Generate commands to print initialized variable values
+        self.gen(f"    // Print initialized variable values to verify:")
         self.gen(f'    printf("\\n");')
-        self.gen(f'    printf("Initial variable values are: \\n");')
-        self.gen(f"    for (int i = 0; i < {num_vars}; i++) " + "{")
-        self.gen(f"        printf(\"%s = %d\\n\", variables[i], variables[i]);")
-        self.gen(f"    }}")
+        self.gen(print_values)
+        
     
     def _gen_c_file_end(self):
         '''
         Generate the standard ending content of the .c file.
         '''
+        num_vars = len(self.variables)
+        print_values = ""
+        for i in range(num_vars):
+            print_values += (
+                    f"    printf(\"{self.variables[i]} = %lld \\n\", "
+                    f"(long long)var_values[{i}]);\n"
+            )
         self.gen(f"    // Print final array values:")
         self.gen(f'    printf("\\nFinal variable values are: \\n");')
-
+        self.gen(f'    printf("\\n");')
+        self.gen(print_values)
+        self.gen(f'    printf("\\n");')
+        self.gen(f"")
+        self.gen(f"    return EXIT_SUCCESS;")
+        self.gen(f"")
         self.gen(f"}}")
-    
-
-    # +  "\n"
-    #       +  "    // Print final array values:\n"
-    #       +  '    printf("\\nFinal variable values are: \\n");\n'
-    #       + printVals
-    #       +  '    printf("\\n");\n'
-    #       +  "\n"
-    #       +  "    return EXIT_SUCCESS;\n"
-    #       +  "}\n"
-
     
     def _emit_function_prologue(self):
         """
