@@ -10,12 +10,9 @@ description:  Implements the RISC_V_CodeGenerator class to convert an
               Created for CS 554 (Compiler Construction) at UNM.
 """
 
-from typing import List, Any
-
 class RISC_V_CodeGenerator:
     """
     RISC-V Code Generator
-    Uses register allocation strategy instead of stack machine model
     """
     
     def __init__(self, name="generated_function"):
@@ -25,14 +22,11 @@ class RISC_V_CodeGenerator:
         self.code = []
         self.name = name
         self.var_map = {}       # Map variable names to registers or memory locations
-        self.next_reg = 8       # Start using registers from x8 (t0-t6)
         self.label_counter = 0
         self.variables = []     # List of all variables
-        self.memory_offset = 0  # Memory offset counter
 
         self.l = 0
 
-        #self.max_branch = 1
         self.max_branch = 0
 
         self.comment_map = {
@@ -60,22 +54,6 @@ class RISC_V_CodeGenerator:
             ">=": "    slt t0, t0, t1\n    xori t0, t0, 1"
         }
     
-    def _get_register(self, var_name):
-        """
-        Allocate register for variable
-        """
-        if var_name not in self.var_map:
-            if self.next_reg <= 15:  # Use t0-t6 registers
-                reg_name = f"x{self.next_reg}"
-                self.var_map[var_name] = reg_name
-                self.next_reg += 1
-            else:
-                # Use memory when registers are insufficient
-                self.var_map[var_name] = f"mem_{var_name}"
-                self.memory_offset += 8
-        
-        return self.var_map[var_name]
-    
     def gen(self, instruction):
         """
         Add instruction to code list
@@ -89,14 +67,9 @@ class RISC_V_CodeGenerator:
 
         self._collect_variables(ast)
         
-        # Generate function prologue
-        self._emit_function_prologue()
-        
-        # Generate code
-        self._generate_statement(ast)
-        
-        # Generate function epilogue
-        self._emit_function_epilogue()
+        self._emit_function_prologue()  # Generate function prologue
+        self._generate_statement(ast)   # Generate code
+        self._emit_function_epilogue()  # Generate function epilogue
         
         return "\n".join(self.code)
     
@@ -316,19 +289,7 @@ class RISC_V_CodeGenerator:
 
             self.gen(f"    seqz t0, t0")
             self.gen(f"    sd t0, {8*branch}(sp)")
-    
-    def _get_temp_register(self):
-        """
-        Get temporary register
-        """
-        if self.next_reg <= 15:
-            reg_name = f"x{self.next_reg}"
-            self.next_reg += 1
-            return reg_name
-        #else:
-            # Use a0 as temporary register
-        #    return "a0"
-    
+        
     def _new_label(self):
         """
         Generate new label

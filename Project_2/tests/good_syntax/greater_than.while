@@ -2,3 +2,4 @@ if x > y then
     output := 1
 else
     output := 0
+fi
