@@ -1,0 +1,39 @@
+{-
+  Contributed by Fall 2023 Team Joe's Angels (Haskell)
+  Mike Adams
+  Ben Ogden
+  Anthony Sharma
+-}
+
+{-
+given input number n, count and see how many numbers, from 0 to n, are triangular numbers
+-}
+isNumFact := 0;
+sum := 0;
+n := 1;
+count := 0;
+while i < goUpToNumber do
+	while sum <= i do
+		sum := sum + n;
+		if sum = i then
+			isNumFact := 1;
+			sum := i + 1
+		else
+			skip
+		fi;
+		n := n + 1
+	od;
+	if isNumFact = 1 then
+		count := count + 1
+	else
+		skip
+	fi;
+	--reset tmp vars
+	isNumFact := 0;
+	sum := 0;
+	n := 1;
+	i := i + 1
+od;
+output := count
+
+
