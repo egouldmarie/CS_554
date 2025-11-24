@@ -265,7 +265,21 @@ class RISC_V_CodeGenerator:
                     self.gen(f"    j {cond_label}")
                     # Don't process this successor again - it's a back edge
                     return  # Exit early, don't process other successors
-            if successor not in self.visited_nodes:
+            elif successor.node_type == 'merge':
+                # For merge nodes, always jump to their successors even if already visited
+                # This ensures both if branches (then and else) connect correctly
+                for merge_succ in successor.successors:
+                    if merge_succ.label is not None:
+                        # Jump to the merge's successor label
+                        merge_label = self._get_asm_label(merge_succ.label)
+                        self.gen(f"    j {merge_label}")
+                        # Process the successor if not visited
+                        if merge_succ not in self.visited_nodes:
+                            self._generate_from_cfg(merge_succ)
+                        return  # Exit after handling merge
+                    elif merge_succ not in self.visited_nodes:
+                        self._generate_from_cfg(merge_succ)
+            elif successor not in self.visited_nodes:
                 self._generate_from_cfg(successor)
 
     def _generate_cfg_condition(self, cfg_node):
@@ -368,6 +382,28 @@ class RISC_V_CodeGenerator:
             
             if false_successor not in self.visited_nodes:
                 self._generate_from_cfg(false_successor)
+                # After processing false branch, ensure we jump to merge's successor
+                # Find merge node from false branch
+                merge_node = None
+                if false_successor.node_type == 'merge':
+                    merge_node = false_successor
+                else:
+                    # Check if false branch's successor is merge
+                    for succ in false_successor.successors:
+                        if succ.node_type == 'merge':
+                            merge_node = succ
+                            break
+                
+                # If merge found, jump to its successor
+                if merge_node is not None:
+                    for merge_succ in merge_node.successors:
+                        if merge_succ.label is not None:
+                            merge_label = self._get_asm_label(merge_succ.label)
+                            # Only jump if we haven't already generated this jump
+                            # (check if last instruction is not already this jump)
+                            if not self.code or not self.code[-1].strip().endswith(f"j {merge_label}"):
+                                self.gen(f"    j {merge_label}")
+                            break
             
         elif len(cfg_node.successors) == 1:
             # Only one successor (shouldn't happen for condition, but handle gracefully)

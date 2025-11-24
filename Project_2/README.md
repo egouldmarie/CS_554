@@ -14,8 +14,8 @@ Project 2 - Release 2 (v2.2)
 ## Included in TAR file:
 1. Compiler Code (found in `code/`)
 2. Example CFGs (`exampleCFGs.pdf`)
-3. Virtual RISC-V code (found in `riscv/`)
-4. Example `.while` files (found in `code/tests/good_syntax`)
+3. Virtual RISC-V code (found in `code/examples/compiled/`)
+4. Example `.while` files (found in `code/examples/`)
 
 ## Test Run Results
 | **`.while` program** | **input** | **output** | **expected result** |
@@ -24,9 +24,9 @@ Project 2 - Release 2 (v2.2)
 |`example1-factorial`|output = 0, x = 20, y = 0, z = 0|output = 2432902008176640000, x = 20, y = 0, z = 2432902008176640000|✅|
 |`example6-collatz`|input = 1000, n = 0, output = 0, quot = 0, rem = 0, steps = 0|||
 |`example13-fibonacci`|a = 0, b = 0, n = 90, output = 0, t = 0, z = 0|a = 2880067194370816120, b = 4660046610375530309, n = 0, output = 2880067194370816120, t = 4660046610375530309, z = 0|✅|
-|`primescounter`||||
-|`primescounter`||||
-|`primescounter`||||
+|`primescounter`|count = 0, i = 0, k = 0, output = 0, range = 100, result = 0|||
+|`primescounter`|count = 0, i = 0, k = 0, output = 0, range = 1000, result = 0|||
+|`primescounter`|count = 0, i = 0, k = 0, output = 0, range = 10000, result = 0|||
 |`veryveryverysimpleloop`|counter = 1000000000|counter = -1|✅|
 
 
