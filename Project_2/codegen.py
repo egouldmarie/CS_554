@@ -9,8 +9,6 @@ description:  Implements the RISC_V_CodeGenerator class to convert a
               Created for CS 554 (Compiler Construction) at UNM.
 """
 
-from typing import List, Any, Set
-
 class RISC_V_CodeGenerator:
     """
     RISC-V Code Generator
@@ -24,7 +22,6 @@ class RISC_V_CodeGenerator:
         self.code = []
         self.name = name
         self.var_map = {}       # Map variable names to s registers (s1, s2, s3, ...)
-        self.next_s_reg = 1     # Start using s registers from s1
         self.label_counter = 0
         self.variables = []     # List of all variables in order
         self.cfg = None          # The CFG being processed
@@ -55,22 +52,6 @@ class RISC_V_CodeGenerator:
             ">": "    slt t0, t1, t0",
             ">=": "    slt t0, t0, t1\n    xori t0, t0, 1"
         }
-    
-    def _get_register(self, var_name):
-        """
-        Allocate register for variable
-        """
-        if var_name not in self.var_map:
-            if self.next_reg <= 15:  # Use t0-t6 registers
-                reg_name = f"x{self.next_reg}"
-                self.var_map[var_name] = reg_name
-                self.next_reg += 1
-            else:
-                # Use memory when registers are insufficient
-                self.var_map[var_name] = f"mem_{var_name}"
-                self.memory_offset += 8
-        
-        return self.var_map[var_name]
     
     def gen(self, instruction):
         """
@@ -148,7 +129,7 @@ class RISC_V_CodeGenerator:
         
         # Load each variable into its corresponding s register
         for i, var in enumerate(self.variables):
-            offset = (i + 1) * 8  # offset = (index + 1) * 8 (first variable at offset 8)
+            offset = i * 8  # offset = index * 8 (first variable at offset 0)
             s_reg = self.var_map[var]
             self.gen(f"    # {s_reg}<-input")
             self.gen(f"    ld {s_reg}, {offset}(a0)")
@@ -163,7 +144,7 @@ class RISC_V_CodeGenerator:
         
         # Save each variable from its s register back to memory
         for i, var in enumerate(self.variables):
-            offset = (i + 1) * 8  # offset = (index + 1) * 8
+            offset = i * 8  # offset = index * 8
             s_reg = self.var_map[var]
             self.gen(f"    # output<-{s_reg}")
             self.gen(f"    sd {s_reg}, {offset}(a0)")
@@ -267,8 +248,8 @@ class RISC_V_CodeGenerator:
         var_reg = self.var_map[var_name]
         
         # Generate expression code - result will be in a temporary s register
-        # Use s0 as temporary, then move to var_reg
-        result_reg = self._generate_expression_cfg(expr, "s0")
+        # Use t0 as temporary, then move to var_reg
+        result_reg = self._generate_expression_cfg(expr, "t0")
         
         # Move result to variable's s register
         if result_reg != var_reg:
@@ -309,8 +290,8 @@ class RISC_V_CodeGenerator:
                     self._generate_from_cfg(successor)
             return
         
-        # Generate condition expression - result in s0
-        result_reg = self._generate_expression_cfg(condition_expr, "s0")
+        # Generate condition expression - result in t0
+        result_reg = self._generate_expression_cfg(condition_expr, "t0")
         
         if len(cfg_node.successors) >= 2:
             # Has true and false branches
@@ -446,8 +427,8 @@ class RISC_V_CodeGenerator:
         """
         if result_reg is None:
             # Allocate a temporary s register
-            # We'll use s0 for temporary calculations (it's not used for variables)
-            result_reg = "s0"
+            # We'll use t0 for temporary calculations (it's not used for variables)
+            result_reg = "t0"
         
         if node.type == "int":
             # Integer constant
@@ -479,13 +460,13 @@ class RISC_V_CodeGenerator:
             # Evaluate left operand into result_reg
             left_reg = self._generate_expression_cfg(node.children[0], result_reg)
             
-            # Evaluate right operand into a temporary register (s0 if available, or reuse)
+            # Evaluate right operand into a temporary register (t0 if available, or reuse)
             # We need a second register for the operation
-            right_reg = "s0" if result_reg != "s0" else "t0"  # Use t0 as fallback if s0 is in use
+            right_reg = "t0" if result_reg != "t0" else "t1"  # Use t1 as fallback if t0 is in use
             
-            # If result_reg is s0, we need to use a different register for right operand
-            if result_reg == "s0":
-                right_reg = "t0"  # Use t0 temporarily
+            # If result_reg is t0, we need to use a different register for right operand
+            if result_reg == "t0":
+                right_reg = "t1"  # Use t1 temporarily
             
             right_reg = self._generate_expression_cfg(node.children[1], right_reg)
             
@@ -524,19 +505,7 @@ class RISC_V_CodeGenerator:
             # Unknown type, return 0
             self.gen(f"    li {result_reg}, 0")
             return result_reg
-    
-    def _get_temp_register(self):
-        """
-        Get temporary register
-        """
-        if self.next_reg <= 15:
-            reg_name = f"x{self.next_reg}"
-            self.next_reg += 1
-            return reg_name
-        #else:
-            # Use a0 as temporary register
-        #    return "a0"
-    
+        
     def _new_label(self):
         """
         Generate new label

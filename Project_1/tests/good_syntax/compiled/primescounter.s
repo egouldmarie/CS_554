@@ -61,7 +61,7 @@ while_label_2:
     sd t0, 0(sp)
     ld t0, 0(sp)
     beqz t0, else_label_3
-    # [skip]0
+    # skip
     j end_label_3
 else_label_3:
 while_label_4:
@@ -105,7 +105,7 @@ while_label_4:
     sd t0, 0(a0)
     j end_label_5
 else_label_5:
-    # [skip]1
+    # skip
 end_label_5:
     ld t0, 16(a0)
     sd t0, 0(sp)
@@ -142,7 +142,7 @@ end_label_2:
     sd t0, 0(sp)
     ld t0, 0(sp)
     beqz t0, else_label_6
-    # [skip]2
+    # skip
     j end_label_6
 else_label_6:
     li t0, 1

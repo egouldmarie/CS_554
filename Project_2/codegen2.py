@@ -25,22 +25,8 @@ class RISC_V_CodeGenerator:
         self.label_counter = 0
         self.variables = []     # List of all variables
 
-        self.l = 0
-
         self.max_branch = 0
 
-        self.comment_map = {
-            "add": "    # Addition",
-            "sub": "    # Subtraction",
-            "mult": "    # Multiplication",
-            "and": "    # AND",
-            "or": "    # OR",
-            "=": "    # Equality",
-            "<": "    # Less Than",
-            "<=": "    # Less Than or Equal",
-            ">": "    # Greater Than",
-            ">=": "    # Greater Than or Equal"
-            }
         self.riscv_map = {
             "add": "    add t0, t0, t1",
             "sub": "    sub t0, t0, t1",
@@ -98,10 +84,12 @@ class RISC_V_CodeGenerator:
                 collect_from_node(node.children[0])
                 collect_from_node(node.children[1], branch+1)
         
-        #for stmt in ast:
         collect_from_node(ast)
         
         self.variables.sort()
+        # map variables to s registers
+        for i, var in enumerate(self.variables):
+            self.var_map[var] = f"s{i+1}"
     
     def _emit_function_prologue(self):
         """
@@ -112,23 +100,31 @@ class RISC_V_CodeGenerator:
         self.gen(f"{self.name}:")
         self.gen("    # Function prologue")
         self.gen(f"    addi sp, sp, -{8*self.max_branch}")
-        #self.gen("    sd ra, 8(sp)")
-        #self.gen("    sd fp, 0(sp)")
-        #self.gen("    addi fp, sp, 16")
         self.gen("    # Variable array pointer in a0")
+        # Load each variable into its corresponding s register
+        for i, var in enumerate(self.variables):
+            offset = i * 8  # offset = index * 8 (first variable at offset 0)
+            s_reg = self.var_map[var]
+            self.gen(f"    # {s_reg}<-input")
+            self.gen(f"    ld {s_reg}, {offset}(a0)")
+        
         self.gen("")
     
     def _emit_function_epilogue(self):
         """
         Generate function epilogue
         """
-        #self.gen("")
+        self.gen("")
         self.gen("    # Function epilogue")
-        #self.gen("    ld ra, 8(sp)")
-        #self.gen("    ld fp, 0(sp)")
         self.gen(f"    addi sp, sp, {8*self.max_branch}")
+        # Save each variable from its s register back to memory
+        for i, var in enumerate(self.variables):
+            offset = i * 8  # offset = index * 8
+            s_reg = self.var_map[var]
+            self.gen(f"    # output<-{s_reg}")
+            self.gen(f"    sd {s_reg}, {offset}(a0)")
+
         self.gen("    ret")
-        #self.gen("")
     
     def _generate_statement(self, node):
         """
@@ -144,10 +140,8 @@ class RISC_V_CodeGenerator:
         elif node.type == "while":
             self._generate_while_statement(node)
         elif node.type == "skip":
-            #self.gen(f"    # [skip]{self.l}")
+            self.gen(f"    # label = {node.l}")
             self.gen("    # skip")
-            self.l = self.l+1
-            #pass
     
     def _generate_assignment(self, node):
         """
@@ -157,17 +151,10 @@ class RISC_V_CodeGenerator:
         expr = node.children[1]
         
         # Generate expression code
-        #self.gen("    # [")
-        #l = self.l
-        #self.l = self.l+1
+        self.gen(f"    # label = {node.l}")
         self._generate_expression(expr)
-        #self.gen("")
-        #self.gen(f"    # {var_name} := ")
-        self.gen(f"    ld t0, 0(sp)")                   # load value from stack into a temporary register (t0)
-        
-        var_offset = self.variables.index(var_name) * 8
-        self.gen(f"    sd t0, {var_offset}(a0)")        # copy value from temporary register (t0) into argument memory
-        #self.gen(f"    # ]{l}")
+        self.gen(f"    ld {self.var_map[var_name]}, 0(sp)")     # load value from stack into assigned variable register
+        self.gen("")
 
     def _generate_if_statement(self, node):
         """
@@ -176,15 +163,10 @@ class RISC_V_CodeGenerator:
         condition = node.children[0]
         true_block = node.children[1]
         else_block = node.children[2]
-        
+
         # Generate condition code
-        #self.gen("")
-        #self.gen("    # If Statement")
-        #self.gen("    # [")
-        #l = self.l
-        #self.l = self.l+1
+        self.gen(f"    # label = {condition.l}")
         self._generate_expression(condition)
-        #self.gen(f"    # ]{l}")
         self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
         
         # Generate labels
@@ -193,20 +175,18 @@ class RISC_V_CodeGenerator:
         end_label = "end_" + label
         
         # Conditional jump
-        #self.gen("")
         self.gen(f"    beqz t0, {else_label}")
+        self.gen("")
         
         # true block
         self._generate_statement(true_block)
         
         self.gen(f"    j {end_label}")
-        #self.gen("")
         self.gen(f"{else_label}:")
         
         # else block
         self._generate_statement(else_block)
         
-        #self.gen("")
         self.gen(f"{end_label}:")
     
     def _generate_while_statement(self, node):
@@ -215,36 +195,27 @@ class RISC_V_CodeGenerator:
         """
         condition = node.children[0]
         body = node.children[1]
-        
+
         # Generate labels
         label = self._new_label()
         loop_label = "while_" + label
         end_label = "end_" + label
         
-        #self.gen("")
-        #self.gen(f"    # While Statement")
         self.gen(f"{loop_label}:")
         
         # Generate condition code
-        #self.gen(f"    # Condition")
-        #self.gen("    # [")
-        #l = self.l
-        #self.l = self.l+1
+        self.gen(f"    # label = {condition.l}")
         self._generate_expression(condition)
-        #self.gen(f"    # ]{l}")
         self.gen(f"    ld t0, 0(sp)")       # load value from stack into a temporary register (t0)
         
         # Conditional jump
-        #self.gen("")
         self.gen(f"    beqz t0, {end_label}")
+        self.gen("")
         
         # Do
-        #self.gen(f"    # Do")
         self._generate_statement(body)
 
-        #self.gen("")        
         self.gen(f"    j {loop_label}")
-        #self.gen(f"    # Od")
         self.gen(f"{end_label}:")
 
     def _generate_expression(self, node, branch=0):
@@ -254,42 +225,36 @@ class RISC_V_CodeGenerator:
         if node.type == "int":
             # Integer constant
             value = node.value
-            #self.gen(f"    # literal = {value}")
-            self.gen(f"    li t0, {value}")             # put value into a temporary register (t0)
-            self.gen(f"    sd t0, {8*branch}(sp)")       # copy value from temp register into stack
+            self.gen(f"    li t0, {value}")                     # put value into a temporary register (t0)
+            self.gen(f"    sd t0, {8*branch}(sp)")              # copy value from temp register into stack
         elif node.type == "var":
             # Variable
             var_name = node.value
-            #self.gen(f"    # var {var_name}")
-            var_offset = self.variables.index(var_name) * 8
-            self.gen(f"    ld t0, {var_offset}(a0)")    # load value into a temporary register (t0)
-            self.gen(f"    sd t0, {8*branch}(sp)")       # copy value from temp register into stack
+            self.gen(f"    mv t0, {self.var_map[var_name]}")    # move value into a temporary register (t0)
+            self.gen(f"    sd t0, {8*branch}(sp)")              # copy value from temp register into stack
         elif node.type in ["true", "false"]:
             # Boolean constant
-            #self.gen(f"    # boolean constant = {node.type}")
             if node.type == "true":
-                self.gen(f"    li t0, 1")               # put 1 into a temporary register (t0)
-                self.gen(f"    sd t0, {8*branch}(sp)")   # copy value from temp register into stack
+                self.gen(f"    li t0, 1")                       # put 1 into a temporary register (t0)
+                self.gen(f"    sd t0, {8*branch}(sp)")          # copy value from temp register into stack
             else:
-                self.gen(f"    sd x0, {8*branch}(sp)")   # copy 0 from x0 (always 0) into stack
+                self.gen(f"    sd x0, {8*branch}(sp)")          # copy 0 from x0 (always 0) into stack
         elif node.type in ["add", "sub", "mult", "=", "<", ">", "<=", ">=", "and", "or"]:
             self._generate_expression(node.children[0], branch)
             self._generate_expression(node.children[1], branch+1)
-            #self.gen(self.comment_map[node.type])
-            self.gen(f"    ld t1, {8*(branch+1)}(sp)")   # load value from stack into a temporary register (t1)
-            self.gen(f"    ld t0, {8*branch}(sp)")       # load value from stack into a temporary register (t0)
+            self.gen(f"    ld t1, {8*(branch+1)}(sp)")          # load value from stack into a temporary register (t1)
+            self.gen(f"    ld t0, {8*branch}(sp)")              # load value from stack into a temporary register (t0)
 
-            self.gen(self.riscv_map[node.type])           # perform operation, place result in t0
-            self.gen(f"    sd t0, {8*branch}(sp)")       # copy value from temp register (t0) into stack
+            self.gen(self.riscv_map[node.type])                 # perform operation, place result in t0
+            self.gen(f"    sd t0, {8*branch}(sp)")              # copy value from temp register (t0) into stack
         elif node.type == "not":
             # Logical NOT (Unary Operator)
             self._generate_expression(node.children[0], branch)
-            #self.gen(f"    # NOT")
             self.gen(f"    ld t0, {8*branch}(sp)")
 
             self.gen(f"    seqz t0, t0")
             self.gen(f"    sd t0, {8*branch}(sp)")
-        
+
     def _new_label(self):
         """
         Generate new label
