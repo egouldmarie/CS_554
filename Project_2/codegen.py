@@ -33,31 +33,6 @@ class RISC_V_CodeGenerator:
         self.visited_nodes = set()  # Track visited CFG nodes
         self.label_to_asm_label = {}  # Map CFG label to assembly label
 
-        self.comment_map = {
-            "add": "    # Addition",
-            "sub": "    # Subtraction",
-            "mult": "    # Multiplication",
-            "and": "    # AND",
-            "or": "    # OR",
-            "=": "    # Equality",
-            "<": "    # Less Than",
-            "<=": "    # Less Than or Equal",
-            ">": "    # Greater Than",
-            ">=": "    # Greater Than or Equal"
-            }
-        self.riscv_map = {
-            "add": "    add t0, t0, t1",
-            "sub": "    sub t0, t0, t1",
-            "mult": "    mul t0, t0, t1",
-            "and": "    and t0, t0, t1",
-            "or": "    or t0, t0, t1",
-            "=": "    sub t0, t0, t1\n    seqz t0, t0",
-            "<": "    slt t0, t0, t1",
-            "<=": "    slt t0, t1, t0\n    xori t0, t0, 1",
-            ">": "    slt t0, t1, t0",
-            ">=": "    slt t0, t0, t1\n    xori t0, t0, 1"
-        }
-
     def gen(self, instruction):
         """
         Add instruction to code list
@@ -487,5 +462,5 @@ class RISC_V_CodeGenerator:
         Generate new label
         """
         self.label_counter += 1
-        return f"label_{self.label_counter}"
+        return f"new_label_{self.label_counter}"
     
