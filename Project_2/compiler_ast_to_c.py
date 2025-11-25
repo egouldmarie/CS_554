@@ -6,7 +6,7 @@ author note:  based on earlier work authored with project partners
 created:      2025-11-23
 last updated: 2025-11-23
 description:  Coordinates actions of Scanner, Parser, and
-              C_CodeGenerator classes for the compiling of a
+              CCodeGenerator classes for the compiling of a
               WHILE language programs into corresponding C programs.
               Code based on the compiler.py code previously
               developed with co-authors Jaime Gould & Qing Shao.
@@ -20,7 +20,7 @@ import subprocess
 from parser import Parser
 from scanner import Tokenize
 from codegen import RISC_V_CodeGenerator
-from c_codegen import C_CodeGenerator
+from codegen_ast_to_c import CCodeGenerator
 from trees import decorate_ast, insert_labels, generate_dot_from_tree
 from cfg import ast_to_cfg, generate_cfg_dot
 
@@ -156,8 +156,8 @@ if __name__ == "__main__":
     # Generate, display, and save to .c file   #
     # the C code version of the WHILE program  #
     # ======================================== #
-    c_codegen = C_CodeGenerator(function_name)
-    c_code = c_codegen.generate_2(ast)
+    c_codegen = CCodeGenerator(c_file_name_2)
+    c_code = c_codegen.generate(ast)
     print("\nC Code:")
     print("-" * 70)
     print(c_code)
