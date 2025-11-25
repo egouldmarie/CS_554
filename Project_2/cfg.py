@@ -17,6 +17,19 @@ class CFGNode:
     Represents a node in the Control Flow Graph.
     Each node corresponds to a labeled statement or condition in the program.
     """
+
+    # Class variable to help provide MERGE nodes with a unique id
+    _next_merge_node_id = 0
+    # Class meethod to actually generate the unique MERGE node ids
+    # This is used whenever generating a new MERGE node (see, for 
+    # example, the generation of a MERGE node in constructing
+    # IF-THEN-ELSE nodes).
+    @staticmethod
+    def _get_next_merge_node_id():
+        _int_portion = CFGNode._next_merge_node_id
+        CFGNode._next_merge_node_id += 1
+        return "merge_" + str(_int_portion)
+
     
     def __init__(self, label, node_type, content=None, ast_node=None):
         """
@@ -333,14 +346,22 @@ def ast_to_cfg(ast_root):
             # Create merge node (if needed)
             # If both branches exist, we need a merge point
             if true_end is not None and else_end is not None:
+                _new_id = CFGNode._get_next_merge_node_id()
+                # merge_node = CFGNode(
+                #     label=None,
+                #     node_type='merge',
+                #     content='merge'
+                # )
                 merge_node = CFGNode(
-                    label=None,
+                    label=_new_id,
                     node_type='merge',
                     content='merge'
                 )
                 cfg.add_node(merge_node)
                 true_end.add_successor(merge_node)
                 else_end.add_successor(merge_node)
+                print(f"merge_node = {merge_node}")
+                print(f"merge_node.predecessors = {merge_node.predecessors}")
                 return merge_node
             elif true_end is not None:
                 return true_end
