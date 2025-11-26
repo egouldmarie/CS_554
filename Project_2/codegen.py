@@ -123,6 +123,7 @@ class RISC_V_CodeGenerator:
         Generate function epilogue - save s registers back to memory
         """
         self.epilogue = []
+        self.epilogue.append("")
         self.epilogue.append("    # Function epilogue")
         # deallocate stack
         self.epilogue.append("    # Deallocate stack")
@@ -144,8 +145,8 @@ class RISC_V_CodeGenerator:
             self.max_stack = self.pointer
     
     def _pop(self, register="t0"):
-        self.gen(f"    ld {register}, {self.pointer*8}(sp)")
         self.pointer = self.pointer - 1
+        self.gen(f"    ld {register}, {self.pointer*8}(sp)")
     
     def _generate_from_cfg(self, nodes):
         """
