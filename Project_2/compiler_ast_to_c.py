@@ -156,7 +156,14 @@ if __name__ == "__main__":
     # Generate, display, and save to .c file   #
     # the C code version of the WHILE program  #
     # ======================================== #
-    c_codegen = CCodeGenerator(c_file_name_2)
+
+    # USAGE: CCodeGenerator(source_file, output_c_file)
+    # source_file is the original .while file (given as an arg
+    # when running compiler_ast_to_c.py);
+    # output_c_file is the desired name of the resulting .c file
+    # Neither is actively used in the cfg.py code EXCEPT to
+    # provide info for comments written in the eventual .c file.
+    c_codegen = CCodeGenerator(args.filename, c_file_name_2)
     c_code = c_codegen.generate(ast)
     print("\nC Code:")
     print("-" * 70)

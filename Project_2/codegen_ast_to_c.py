@@ -21,13 +21,15 @@ class CCodeGenerator:
     C Code Generator
     """
     
-    def __init__(self, name="generated_file.c"):
+    def __init__(self, source="source_file.while", output_filename="generated_file.c"):
         """
         Initialize a C code generator.
         """
         self.code = []
         self.indent_level = 0   # Determines indentation
-        self.name = name
+        self.source = source
+        self.name = output_filename
+        self.output_filename = output_filename
         self.var_map = {}       # Map variable names to registers or memory locations
         self.next_reg = 8       # Start using registers from x8 (t0-t6)
         self.label_counter = 0
@@ -160,10 +162,10 @@ class CCodeGenerator:
         date_string = today.strftime("%Y-%m-%d")
 
         self.gen(f"/**")
-        self.gen(f" * filename: {self.name}")
+        self.gen(f" * filename: {self.output_filename}")
         self.gen(f" * created:  {date_string}")
         self.gen(f" * descr:    C program produced from the AST of")
-        self.gen(f" *           {self.name}.")
+        self.gen(f" *           {self.source}.")
         self.gen(f"*/")
         self.gen(f"")
         self.gen(f"#include <stdio.h>")
