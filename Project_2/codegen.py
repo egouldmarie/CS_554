@@ -255,7 +255,7 @@ class RISC_V_CodeGenerator:
             return result_reg
         elif node.type == "not":
             # Logical NOT (Unary Operator)
-            operand_reg = self._generate_expression(node.children[0], result_reg)
+            operand_reg = self._generate_expression(node.children[0])
             self.gen(f"    seqz {result_reg}, {operand_reg}")
             return result_reg
         else:
