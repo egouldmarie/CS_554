@@ -134,10 +134,8 @@ if __name__ == "__main__":
     # ======================================== #
     print("\nGenerating Control Flow Graph (CFG)...")
     print("-" * 70)
-    cfg = ast_to_cfg(ast)
-    generate_cfg_dot(cfg, filename=cfg_file)
-    print(f"CFG DOT file saved to: {cfg_file}")
-    print(f"CFG contains {len(cfg.nodes)} nodes.")
+    cfg, nodes = ast_to_cfg(ast)
+    generate_cfg_dot(nodes, filename=cfg_file)
     print("-" * 70)
     print()
 
@@ -146,7 +144,7 @@ if __name__ == "__main__":
     # the RISC-V assembly code                 #
     # ======================================== #
     codegen = RISC_V_CodeGenerator(function_name)
-    assembly = codegen.generate(cfg)  # Generate from CFG instead of AST
+    assembly = codegen.generate(nodes)  # Generate from CFG instead of AST
     print("\nRISC-V Assembly Code:")
     print("-" * 70)
     print(assembly)
