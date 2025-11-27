@@ -1,11 +1,11 @@
 """
-filename:     c_codegen.py
+filename:     codegen_ast_to_c.py
 authors:      Warren Craft
 author note:  based on earlier work authored with project partners
               Jaime Gould & Qinghong Shao
 created:      2025-11-23
 last updated: 2025-11-24
-description:  Implements the C_CodeGenerator class to convert an
+description:  Implements the ASTToCodeGenerator class to convert an
               abstract syntax tree (AST) (produced from the scanning
               and parsing of a WHILE language program) to C code.
               Code based on the RISC_V_CodeGenerator class previously
@@ -16,55 +16,36 @@ description:  Implements the C_CodeGenerator class to convert an
 from typing import List, Any
 from datetime import date
 
-class CCodeGenerator:
+
+class ASTToCCodeGenerator:
     """
-    C Code Generator
+    C Code Generator.
+    An alternative CCodeGenerator to allow the omission of empty
+    code such as while() loops with a do loop that is effectively
+    empty or if() constructs with an effectively empty else block.
     """
     
-    def __init__(self, source="source_file.while", output_filename="generated_file.c"):
+    def __init__(self, source="source_file.while",
+                 output_filename="generated_file.c"):
         """
-        Initialize a C code generator.
+        Initialize a C code generator, optionally supplying the name
+        of the original WHILE source file and then planned output
+        file name. The filenames supplied in the initialization are
+        NOT used to actually determine the input and output files,
+        but are used instead to construct the output file's header
+        comments. The compiler.py program actually takes as an argument
+        the desired WHILE program source file and constructs a related
+        output filename.
         """
         self.code = []
         self.indent_level = 0   # Determines indentation
-        self.source = source
-        self.name = output_filename
+        self.source = source    # Original WHILE source file
         self.output_filename = output_filename
-        self.var_map = {}       # Map variable names to registers or memory locations
-        self.next_reg = 8       # Start using registers from x8 (t0-t6)
-        self.label_counter = 0
         self.variables = []     # List of all variables
-        self.memory_offset = 0  # Memory offset counter
 
         self.l = 0
 
-        #self.max_branch = 1
         self.max_branch = 0
-
-        self.comment_map = {
-            "add": "    # Addition",
-            "sub": "    # Subtraction",
-            "mult": "    # Multiplication",
-            "and": "    # AND",
-            "or": "    # OR",
-            "=": "    # Equality",
-            "<": "    # Less Than",
-            "<=": "    # Less Than or Equal",
-            ">": "    # Greater Than",
-            ">=": "    # Greater Than or Equal"
-            }
-        self.riscv_map = {
-            "add": "    add t0, t0, t1",
-            "sub": "    sub t0, t0, t1",
-            "mult": "    mul t0, t0, t1",
-            "and": "    and t0, t0, t1",
-            "or": "    or t0, t0, t1",
-            "=": "    sub t0, t0, t1\n    seqz t0, t0",
-            "<": "    slt t0, t0, t1",
-            "<=": "    slt t0, t1, t0\n    xori t0, t0, 1",
-            ">": "    slt t0, t1, t0",
-            ">=": "    slt t0, t0, t1\n    xori t0, t0, 1"
-        }
 
         self.type_to_value_map = {
             "add" : "+",
@@ -118,7 +99,6 @@ class CCodeGenerator:
         """
         def collect_from_node(node, branch=0):
             if branch > self.max_branch: self.max_branch = branch
-            #if isinstance(node, tuple):
             if node.type == "var":
                 if node.value not in self.variables:
                     self.variables.append(node.value)
@@ -137,7 +117,7 @@ class CCodeGenerator:
                 collect_from_node(node.children[0])
                 collect_from_node(node.children[1], branch+1)
         
-        #for stmt in ast:
+        # for stmt in ast:
         collect_from_node(ast)
         
         self.variables.sort()
@@ -202,7 +182,6 @@ class CCodeGenerator:
         self.gen(f'    printf("\\n");')
         self.gen(print_values)
         
-    
     def _gen_c_file_end(self):
         '''
         Generate the standard ending content of the .c file.
@@ -233,83 +212,129 @@ class CCodeGenerator:
             self._generate_statement(node.children[0]) # left node
             self._generate_statement(node.children[1]) # right node
         elif node.type == "assign":
-            self._generate_assignment(node)
+            # self._generate_assignment(node)
+            # self.gen(self._construct_statement(node))
+            self.code += self._construct_statement(node)
         elif node.type == "if":
-            self._generate_if_statement(node)
+            _if_construct = self._construct_statement(node)
+            if _if_construct:
+                self.code += _if_construct
+            # self._generate_if_statement(node)
         elif node.type == "while":
-            self._generate_while_statement(node)
+            _while_construct = self._construct_statement(node)
+            if self._construct_statement(node):
+                self.code += _while_construct
+            # self._generate_while_statement(node)
         elif node.type == "skip":
             self._generate_skip_statement(node)
     
-    def _generate_skip_statement(self, node):
+    def _construct_statement(self, node):
+        '''
+        Construct statement code without immediately adding it
+        to the output code, returning the construction (in the
+        form of a (possibly empty) list of statement strings) to
+        the calling function. Such constructions are ultimately
+        added to self.code list of lines of code by the
+        generate_statement() function.
+        '''
+        if node.type == "seq":
+            return (
+                self._construct_statement(node.children[0])   # left node
+              + self._construct_statement(node.children[1]) ) # right node
+        elif node.type == "assign":
+            return self._construct_assignment(node)
+        elif node.type == "if":
+            return self._construct_if_statement(node)
+        elif node.type == "while":
+            return self._construct_while_statement(node)
+        elif node.type == "skip":
+            return self._construct_skip_statement(node)
+
+    def _construct_skip_statement(self, node):
         '''
         Generate C code for a skip statement.
         Generally: we choose to effectively skip such skip statements,
         without adding any lines to the code
         '''
-        pass
-    
-    def _generate_assignment(self, node):
+        return []
+        
+    def _construct_assignment(self, node):
         """
-        Generate assignment statement code
+        Construct assignment statement code, and pass back up to
+        more general construction method
         """
         var_name = node.children[0].value
         expr = node.children[1]
         
-        _rhs = self._generate_expression(expr)
-        self.gen(self.indent() + var_name + " = " + _rhs + ";")
-    
-    def _generate_if_statement(self, node):
+        _rhs = self._construct_expression(expr)
+        return [self.indent() + var_name + " = " + _rhs + ";"]
+        
+    def _construct_if_statement(self, node):
         """
-        Generate if statement code
+        Generate if statement code, and pass resulting lines of
+        code back up to more general construction method
         """
         condition = node.children[0]
         true_block = node.children[1]
         else_block = node.children[2]
 
-        condition_str = self._generate_expression(condition)
-        self.gen(self.indent() + "if (" + condition_str + ") {")
+        condition_str = self._construct_expression(condition)
+        self.indent_level += 1 # for constructing true/else blocks
+        true_construct = self._construct_statement(true_block)
+        else_construct = self._construct_statement(else_block)
+        self.indent_level -= 1 # adjust after leaving true/else blocks
+        if  true_construct == [] and else_construct == []:
+            return []
+        # else we have an if-then-else with at least one non-empty
+        # block, so construct the lines of code and return
+        if_construct = (
+                [self.indent() + "if (" + condition_str + ") {"]
+                + true_construct
+        )
+        if else_construct:
+            # we have a non-empty else block
+            if_construct = (
+                    if_construct
+                    + [self.indent() + "} else {"]
+                    + else_construct
+                    + [self.indent() + "}"] )
+        else:
+            # we have an empty else block, so omit the else portion
+            if_construct = (
+                    if_construct + [self.indent() + "}"])
 
-        # indent inside the if()
-        self.indent_level += 1
-
-        # put the true block (even if it's empty)
-        self._generate_statement(true_block)
-        # remove the indent
-        self.indent_level -= 1
-
-        # future work: deal with possibly empty (skip) content
-        # in the ELSE block, but don't worry for now
-        # close the if-then, set up the else:
-        self.gen(self.indent() + "} else {")
-        # now working the else block, so indent
-        self.indent_level += 1
-        self._generate_statement(else_block)
-        self.indent_level -= 1
-        self.gen(self.indent() + "}")
-
-    def _generate_while_statement(self, node):
+        return if_construct
+    
+    def _construct_while_statement(self, node):
         """
-        Generate C code for a WHILE() loop
+        Construct C code for a WHILE() loop, and pass back up to
+        more general construction method. An empty while() loop is
+        one that has an effectively empty do block, like a sequence
+        of skips, or other operations that themselves evaluate to 
+        being empty.
         """
         condition = node.children[0]
         body = node.children[1]
 
-        condition_str = self._generate_expression(condition)
-        self.gen(self.indent() + "while (" + condition_str + ") {")
+        condition_str = self._construct_expression(condition)
+        # self.gen(self.indent() + "while (" + condition_str + ") {")
+        self.indent_level += 1 # for constructing while() loop body
+        body_construct = self._construct_statement(body)
+        self.indent_level -= 1 # adjust after leaving while() loop body
+        if not body_construct:
+            return []
+        # else we have a non-empty while() loop,
+        # so construct the lines of code and return
+        print(f"body_construct = {body_construct}")
+        print(f"condition_str = {condition_str}")
+        while_construct = (
+            [self.indent() + "while (" + condition_str + ") {"]
+            + body_construct
+            + [self.indent() + "}"]
+        )
+        return while_construct
 
-        # indent inside the while() loop
-        self.indent_level += 1
-
-        # put the body block (even if it's empty)
-        self._generate_statement(body)
-        # remove the indent
-        self.indent_level -= 1
-
-        # close the while() loop:
-        self.gen(self.indent() + "}")
-
-    def _generate_expression(self, node):
+    def _construct_expression(self, node):
         """
         Generate C code for an expression in the AST.
         Result gets passed back up to the calling function rather
@@ -329,12 +354,12 @@ class CCodeGenerator:
         elif node.type in ["add", "sub", "mult", "=", "<", ">",
                            "<=", ">=", "and", "or"]:
             # Binary operator
-            _lhs = self._generate_expression(node.children[0])
-            _rhs = self._generate_expression(node.children[1])
+            _lhs = self._construct_expression(node.children[0])
+            _rhs = self._construct_expression(node.children[1])
             return (_lhs + " " + self.type_to_value_map[node.type] +
                     " " + _rhs)
         elif node.type == "not":
             # Logical NOT (Unary Operator)
-            not_arg = self._generate_expression(node.children[0])
+            not_arg = self._construct_expression(node.children[0])
             return "!(" + not_arg + ")"
     
