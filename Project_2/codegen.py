@@ -39,26 +39,24 @@ class RISC_V_CodeGenerator:
         """
         self.code.append(instruction)
     
-    def generate(self, cfg) -> str:
+    def generate(self, nodes) -> str:
         """
         Main code generation function - generates code from CFG
         
         Args:
-            cfg: ControlFlowGraph object
+            nodes: list of control flow graph nodes
             
         Returns:
             String containing RISC-V assembly code
         """
-        self.cfg = cfg
         self.visited_nodes.clear()
         self.label_to_asm_label.clear()
         
         # Collect variables from CFG nodes
-        self._collect_variables_from_cfg()
+        self._collect_variables_from_cfg(nodes)
         
-        # Generate code from CFG starting from entry node
-        if cfg.entry_node:
-            self._generate_from_cfg(cfg.entry_node)
+        # Generate code from CFG nodes
+        self._generate_from_cfg(nodes)
         
         # Generate function prologue (load variables into s registers)
         self._emit_function_prologue()
@@ -70,34 +68,32 @@ class RISC_V_CodeGenerator:
         
         return "\n".join(self.code)
     
-    def _collect_variables_from_cfg(self):
+    def _collect_variables_from_cfg(self, nodes):
         """
         Collect all variables from CFG nodes
         """
-        variables_set = set()
+        self.variables = []
+        self._collect_vars_from_ast_node(nodes[0].ast)
         
-        for node in self.cfg.nodes:
-            if node.ast_node:
-                self._collect_vars_from_ast_node(node.ast_node, variables_set)
-        
-        self.variables = sorted(list(variables_set))
+        self.variables = sorted(self.variables)
+        print(self.variables)
         
         # Map variables to s registers (s1, s2, s3, ...)
         for i, var in enumerate(self.variables):
             self.var_map[var] = f"s{i+1}"
     
-    def _collect_vars_from_ast_node(self, node, variables_set):
+    def _collect_vars_from_ast_node(self, node):
         """
         Recursively collect variables from an AST node
         """
         if node is None:
             return
         
-        if node.type == "var":
-            variables_set.add(node.value)
+        if node.type == "var" and node.value not in self.variables:
+            self.variables.append(node.value)
         elif hasattr(node, 'children'):
             for child in node.children:
-                self._collect_vars_from_ast_node(child, variables_set)
+                self._collect_vars_from_ast_node(child)
     
     def _emit_function_prologue(self):
         """
@@ -127,6 +123,7 @@ class RISC_V_CodeGenerator:
         Generate function epilogue - save s registers back to memory
         """
         self.epilogue = []
+        self.epilogue.append("")
         self.epilogue.append("    # Function epilogue")
         # deallocate stack
         self.epilogue.append("    # Deallocate stack")
@@ -148,280 +145,54 @@ class RISC_V_CodeGenerator:
             self.max_stack = self.pointer
     
     def _pop(self, register="t0"):
-        self.gen(f"    ld {register}, {self.pointer*8}(sp)")
         self.pointer = self.pointer - 1
+        self.gen(f"    ld {register}, {self.pointer*8}(sp)")
     
-    def _generate_from_cfg(self, cfg_node):
+    def _generate_from_cfg(self, nodes):
         """
         Generate code from CFG node - main CFG traversal function
         
         Args:
-            cfg_node: CFGNode to process
+            nodes: CFGNodes to process
         """
-        if cfg_node is None or cfg_node in self.visited_nodes:
-            return
-        
-        # Mark node as visited
-        self.visited_nodes.add(cfg_node)
-        
-        # Generate label for this node if it has a label
-        if cfg_node.label is not None:
-            asm_label = self._get_asm_label(cfg_node.label)
-            self.gen(f"{asm_label}:")
-            # Add comment with CFG label and content
-            if cfg_node.content:
-                self.gen(f"    # Label {cfg_node.label}: {cfg_node.content}")
-            else:
-                self.gen(f"    # Label {cfg_node.label}")
-        
-        # Generate code based on node type
-        if cfg_node.node_type == 'entry':
-            # Entry node - just continue to successors
-            for successor in cfg_node.successors:
-                if successor not in self.visited_nodes:
-                    self._generate_from_cfg(successor)
-        elif cfg_node.node_type == 'exit':
-            # Exit node - should not have successors, but handle gracefully
-            pass
-        elif cfg_node.node_type == 'assign':
-            self._generate_cfg_assignment(cfg_node)
-        elif cfg_node.node_type == 'skip':
-            self.gen("    # skip")
-            # Continue to successors
-            for successor in cfg_node.successors:
-                if successor not in self.visited_nodes:
-                    self._generate_from_cfg(successor)
-        elif cfg_node.node_type == 'condition':
-            self._generate_cfg_condition(cfg_node)
-            # Condition handling manages its own successors
-        elif cfg_node.node_type == 'merge':
-            # Merge node - just continue to successors
-            for successor in cfg_node.successors:
-                if successor not in self.visited_nodes:
-                    self._generate_from_cfg(successor)
-        else:
-            # Unknown node type
-            self.gen(f"    # Unknown node type: {cfg_node.node_type}")
-            # Continue to successors
-            for successor in cfg_node.successors:
-                if successor not in self.visited_nodes:
-                    self._generate_from_cfg(successor)
-    
-    def _get_asm_label(self, cfg_label):
-        """
-        Get or create assembly label for a CFG label
-        """
-        if cfg_label not in self.label_to_asm_label:
-            self.label_to_asm_label[cfg_label] = f"label_{cfg_label}"
-        return self.label_to_asm_label[cfg_label]
-    
-    def _generate_cfg_assignment(self, cfg_node):
-        """
-        Generate assignment code from CFG node using s registers
-        """
-        if not cfg_node.ast_node:
-            # No AST node, just continue to successors
-            for successor in cfg_node.successors:
-                if successor not in self.visited_nodes:
-                    self._generate_from_cfg(successor)
-            return
-        
-        ast_node = cfg_node.ast_node
-        if ast_node.type != "assign" or len(ast_node.children) < 2:
-            # Invalid assignment, continue to successors
-            for successor in cfg_node.successors:
-                if successor not in self.visited_nodes:
-                    self._generate_from_cfg(successor)
-            return
-        
-        var_name = ast_node.children[0].value
-        expr = ast_node.children[1]
-        
-        # Get the s register for this variable
-        if var_name not in self.var_map:
-            # Variable not found, continue to successors
-            for successor in cfg_node.successors:
-                if successor not in self.visited_nodes:
-                    self._generate_from_cfg(successor)
-            return
-        
-        var_reg = self.var_map[var_name]
-        
-        # Generate expression code - result will be in a temporary s register
-        # Use t0 as temporary, then move to var_reg
-        result_reg = self._generate_expression_cfg(expr)
-        
-        # Move result to variable's s register
-        if result_reg != var_reg:
-            self.gen(f"    mv {var_reg}, {result_reg}")
-        
-        # Continue to successors
-        # For while loops, check if any successor is a visited condition node (back edge)
-        for successor in cfg_node.successors:
-            if successor.node_type == 'condition' and successor in self.visited_nodes:
-                # This is a while loop back edge - jump back to condition label
-                if successor.label is not None:
-                    cond_label = self._get_asm_label(successor.label)
-                    self.gen(f"    j {cond_label}")
-                    # Don't process this successor again - it's a back edge
-                    return  # Exit early, don't process other successors
-            elif successor.node_type == 'merge':
-                # For merge nodes, always jump to their successors even if already visited
-                # This ensures both if branches (then and else) connect correctly
-                for merge_succ in successor.successors:
-                    if merge_succ.label is not None:
-                        # Jump to the merge's successor label
-                        merge_label = self._get_asm_label(merge_succ.label)
-                        self.gen(f"    j {merge_label}")
-                        # Process the successor if not visited
-                        if merge_succ not in self.visited_nodes:
-                            self._generate_from_cfg(merge_succ)
-                        return  # Exit after handling merge
-                    elif merge_succ not in self.visited_nodes:
-                        self._generate_from_cfg(merge_succ)
-            elif successor not in self.visited_nodes:
-                self._generate_from_cfg(successor)
-
-    def _generate_cfg_condition(self, cfg_node):
-        """
-        Generate condition code from CFG node (for if/while)
-        """
-        if not cfg_node.ast_node:
-            # No AST node, handle successors
-            for successor in cfg_node.successors:
-                if successor not in self.visited_nodes:
-                    self._generate_from_cfg(successor)
-            return
-        
-        # cfg_node.ast_node is already the condition expression node
-        # (not the if/while node, but the condition expression itself)
-        condition_expr = cfg_node.ast_node
-        
-        if not condition_expr:
-            # No condition, handle successors
-            for successor in cfg_node.successors:
-                if successor not in self.visited_nodes:
-                    self._generate_from_cfg(successor)
-            return
-        
-        # Generate condition expression - result in t0
-        result_reg = self._generate_expression_cfg(condition_expr)
-        
-        if len(cfg_node.successors) >= 2:
-            # Has true and false branches
-            true_successor = cfg_node.successors[0]
-            false_successor = cfg_node.successors[1]
-            
-            # Get labels for branches
-            if false_successor.label is not None:
-                false_label = self._get_asm_label(false_successor.label)
-            else:
-                false_label = self._new_label()
-            
-            # Check if this is a while loop (body loops back to condition)
-            # We need to check if any node in the true branch (body) loops back to this condition
-            is_while_loop = False
-            visited_in_check = set()
-            nodes_to_check = [true_successor]
-            
-            while nodes_to_check and not is_while_loop:
-                current = nodes_to_check.pop(0)
-                if current in visited_in_check:
-                    continue
-                visited_in_check.add(current)
-                
-                for succ in current.successors:
-                    if succ == cfg_node:  # Found a back edge to condition
-                        is_while_loop = True
-                        break
-                    if succ not in visited_in_check and succ.node_type != 'exit':
-                        nodes_to_check.append(succ)
-            
-            # Conditional jump - if condition is false (0), jump to false branch
-            self.gen(f"    beqz {result_reg}, {false_label}")
-            
-            # True branch
-            if true_successor not in self.visited_nodes:
-                self._generate_from_cfg(true_successor)
-            
-            # For if statements (not while loops), need to jump past false branch
-            if not is_while_loop:
-                # Find merge node or end of false branch
-                end_label = None
-                # Check if false_successor is a merge node
-                if false_successor.node_type == 'merge':
-                    # Merge node - check its successors for the actual end
-                    for merge_succ in false_successor.successors:
-                        if merge_succ.label is not None:
-                            end_label = self._get_asm_label(merge_succ.label)
-                            break
-                    if end_label is None:
-                        end_label = self._new_label()
-                else:
-                    # Check false branch's successors for merge
-                    for succ in false_successor.successors:
-                        if succ.node_type == 'merge':
-                            if succ.label is not None:
-                                end_label = self._get_asm_label(succ.label)
-                            else:
-                                end_label = self._new_label()
-                            break
-                        elif succ.label is not None:
-                            end_label = self._get_asm_label(succ.label)
-                            break
-                
-                if end_label and end_label != false_label:
-                    self.gen(f"    j {end_label}")
-            
-            # False branch label and code
-            if false_successor.label is None:
-                self.gen(f"{false_label}:")
-            elif false_successor not in self.visited_nodes:
-                # Label will be generated when processing the node
+        for n in range(len(nodes)):
+            node = nodes[n]
+            self.gen(f"label_{node.label}:")
+            self.gen(f"    # {node.content}")
+            if node.type in ["entry", "exit"]:
                 pass
-            
-            if false_successor not in self.visited_nodes:
-                self._generate_from_cfg(false_successor)
-                # After processing false branch, ensure we jump to merge's successor
-                # Find merge node from false branch
-                merge_node = None
-                if false_successor.node_type == 'merge':
-                    merge_node = false_successor
-                else:
-                    # Check if false branch's successor is merge
-                    for succ in false_successor.successors:
-                        if succ.node_type == 'merge':
-                            merge_node = succ
-                            break
-                
-                # If merge found, jump to its successor
-                if merge_node is not None:
-                    for merge_succ in merge_node.successors:
-                        if merge_succ.label is not None:
-                            merge_label = self._get_asm_label(merge_succ.label)
-                            # Only jump if we haven't already generated this jump
-                            # (check if last instruction is not already this jump)
-                            if not self.code or not self.code[-1].strip().endswith(f"j {merge_label}"):
-                                self.gen(f"    j {merge_label}")
-                            break
-            
-        elif len(cfg_node.successors) == 1:
-            # Only one successor (shouldn't happen for condition, but handle gracefully)
-            successor = cfg_node.successors[0]
-            if successor not in self.visited_nodes:
-                self._generate_from_cfg(successor)
-        # else: no successors (shouldn't happen, but handled by caller)
+            else:
+                self._generate_from_ast(node.ast)
+                if node.type == "condition":
+                    self.gen(f"    beqz t0, label_{node.succ[1].label}")
+                if node.succ[0].label != nodes[n+1].label:
+                    self.gen(f"    j label_{node.succ[0].label}")
     
-    def _generate_expression_cfg(self, node, result_reg="t0"):
+    def _generate_from_ast(self, ast):
+        if ast.type == "skip":
+            self.gen(f"    # skip")
+        elif ast.type == "assign":
+            var_reg = self.var_map[ast.children[0].value]
+            
+            # result will be in t0
+            result_reg = self._generate_expression(ast.children[1])
+            
+            # Move result to variable's s register
+            if result_reg != var_reg:
+                self.gen(f"    mv {var_reg}, {result_reg}")
+        else:
+            self._generate_expression(ast)
+
+    def _generate_expression(self, node, result_reg="t0"):
         """
-        Generate expression code using s registers, return the register containing result
+        Generate expression code, return the register containing result
         
         Args:
             node: AST node representing the expression
-            result_reg: Optional s register to store result (if None, allocates a temp)
+            result_reg: Optional register to store result (defaults to t0)
             
         Returns:
-            String name of s register containing the result
+            String name of register containing the result
         """
 
         if node.type == "int":
@@ -443,19 +214,19 @@ class RISC_V_CodeGenerator:
         elif node.type in ["add", "sub", "mult", "=", "<", ">", "<=", ">=", "and", "or"]:
             # Binary operation
             # Evaluate left expression
-            left_reg = self._generate_expression_cfg(node.children[0])
+            left_reg = self._generate_expression(node.children[0])
 
             # Evaluate right expression
             if left_reg == "t0" and node.children[1].type not in ["int", "var"]:
                 # push into stack
                 self._push(left_reg)
                 # right_reg = t0
-                right_reg = self._generate_expression_cfg(node.children[1])
+                right_reg = self._generate_expression(node.children[1])
                 left_reg = "t1"
                 self._pop(left_reg)
             else:
                 # left_reg = t0, right_reg = t1
-                right_reg = self._generate_expression_cfg(node.children[1], "t1")
+                right_reg = self._generate_expression(node.children[1], "t1")
 
             # Perform operation
             if node.type == "add":
@@ -485,18 +256,10 @@ class RISC_V_CodeGenerator:
             return result_reg
         elif node.type == "not":
             # Logical NOT (Unary Operator)
-            operand_reg = self._generate_expression_cfg(node.children[0], result_reg)
+            operand_reg = self._generate_expression(node.children[0])
             self.gen(f"    seqz {result_reg}, {operand_reg}")
             return result_reg
         else:
-            # Unknown type, return 0
-            self.gen(f"    li {result_reg}, 0")
-            return result_reg
-        
-    def _new_label(self):
-        """
-        Generate new label
-        """
-        self.label_counter += 1
-        return f"new_label_{self.label_counter}"
+            # Unknown type
+            raise ValueError("Unknown type")
     
