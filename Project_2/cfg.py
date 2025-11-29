@@ -1,4 +1,11 @@
 class CFG:
+    """
+    A CFG node containing the AST node associated with its block of code,
+    the type of CFG node it is ("entry", "exit", "condition", or "other"),
+    its associated label, the content from the AST, and a list of
+    successors and predecessors in the graph.
+
+    """
     def __init__(self, label, ast=None, type=None, content=None):
         self.ast = ast
         self.type = type
@@ -6,19 +13,49 @@ class CFG:
         self.content = content
 
         self.succ = []
+        self.pred = []
 
 def ast_to_cfg(ast):
+    """
+    Generate CFG from decorated AST.
+
+    Args:
+        ast: decorated AST root node
+
+    Returns: the entry node of the CFG and the list of all nodes
+    """
+    # set up entry and exit nodes
     entry = CFG(label="entry", ast=ast, type='entry', content='ENTRY')
     exit = CFG(label="exit", type='exit', content='EXIT')
 
+    # construct the rest of the CFG
     all_nodes = []
     entry.succ.append(node_from_cfg(ast, exit, all_nodes))
+
+    # sort list of all nodes by label
     all_nodes.sort(key=lambda node: int(node.label))
+
+    # add the entry and exit nodes to the list of all nodes
     all_nodes.insert(0, entry)
     all_nodes.append(exit)
+
+    # retroactively add nodes to their successor's predecessors
+    for node in all_nodes:
+        for succ in node.succ:
+            succ.pred.append(node)
+
     return entry, all_nodes
 
 def node_from_cfg(ast, next_node, all_nodes):
+    """
+        Generates CFG node from the decorated AST.
+
+        Args:
+            ast: the decorated AST node associated with this CFG node
+            next_node: the successor of the CFG node currently being created
+            all_nodes: array of all CFG nodes to append newly generated nodes to
+    """
+
     if ast.type == "seq":
         return node_from_cfg(ast.children[0], node_from_cfg(ast.children[1], next_node, all_nodes), all_nodes)
     elif ast.type in ["assign", "skip"]:
@@ -40,6 +77,14 @@ def node_from_cfg(ast, next_node, all_nodes):
         return node
 
 def cfg_content_from_ast(ast):
+    """
+    Generate string representation of .while code from AST node
+
+    Args:
+        ast: AST node
+
+    Returns: string
+    """
     ops = ["=", "<", ">", "<=", ">=", "and", "add", "sub", "mult", "or", "assign"]
     if ast.type in ["int", "var", "true", "false", "skip"]:
         return f"{ast.value}"
