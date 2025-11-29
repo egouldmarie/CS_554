@@ -6,6 +6,19 @@ class CFG:
         self.content = content
 
         self.succ = []
+    
+    def __repr__(self):
+        # To facilitate printing and debugging.
+        if self.succ == []:
+            return f"{self.content}"
+        # elif self.type == 'var':
+        #     return f"{self.value}"
+        # return f"({self.label}) {self.content} --> {self.succ}"
+        succ_labels = []
+        for succ in self.succ:
+            succ_labels.append("(" + str(succ.label) + ") " + succ.content)
+        succ_labes_str = " ,".join(succ_labels)
+        return f"({self.label}) {self.content} --> [{succ_labes_str}]"
 
 def ast_to_cfg(ast):
     entry = CFG(label="entry", ast=ast, type='entry', content='ENTRY')
