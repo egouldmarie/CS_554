@@ -20,7 +20,7 @@ import subprocess
 from parser import Parser
 from scanner import Tokenize
 from codegen import RISC_V_CodeGenerator
-from codegen_ast_to_c import ASTToCCodeGenerator
+from codegen_ast_to_c import ASTToC_Generator, CFGToC_Generator
 from trees import decorate_ast, insert_labels, generate_dot_from_tree
 from cfg import ast_to_cfg, generate_cfg_dot
 
@@ -70,8 +70,17 @@ if __name__ == "__main__":
     c_file_name = compiled_file + ".c"
     # c_file_name_2 = compiled_file + "_2.c"
     # temporary convenient c_file_name_2 for dev and testing
-    c_file_name_2 = "temp_generated.c"
-    c_compiled_file_name_2 = "temp_generated"
+    # c_file_name_2 = "temp_generated.c"
+    c_gen_from_ast_filename = "c_gen_from_ast.c"
+
+    # c_compiled_file_name_2 = "temp_generated"
+    c_gen_from_ast_compiled_filename = "c_gen_from_ast"
+
+    # filenames for C code generated from CFG
+    c_gen_from_cfg_filename = "c_gen_from_cfg.c"
+    c_gen_from_cfg_compiled_filename = "c_gen_from_cfg"
+
+
 
     # read in file text
     with open(args.filename, "r") as f:
@@ -145,10 +154,21 @@ if __name__ == "__main__":
     # ======================================== #
     print("\nGenerating Control Flow Graph (CFG)...")
     print("-" * 70)
-    cfg = ast_to_cfg(ast)
-    generate_cfg_dot(cfg, filename=cfg_file)
-    print(f"CFG DOT file saved to: {cfg_file}")
-    print(f"CFG contains {len(cfg.nodes)} nodes.")
+    cfg, cfg_nodes = ast_to_cfg(ast)
+    # TESTING =================================== #
+    print(f"cfg = {cfg}")
+    for node in cfg_nodes:
+        print(f"node.type = {node.type}")
+        print(f"node.label = {node.label}")
+        print(f"node.content = {node.content}")
+        print(f"node.ast = {node.ast}")
+    print("")
+    for node in cfg_nodes:
+        print(f"{node}")
+    # END TESTING =============================== #
+    generate_cfg_dot(cfg_nodes, filename=cfg_file)
+    # print(f"CFG DOT file saved to: {cfg_file}")
+    # print(f"CFG contains {len(cfg.nodes)} nodes.")
     print("-" * 70)
     print()
 
@@ -164,7 +184,7 @@ if __name__ == "__main__":
     # Neither is actively used in the cfg.py code EXCEPT to provide
     # info for header comments written in the eventual .c file.
 
-    c_codegen = ASTToCCodeGenerator(args.filename, c_file_name_2)
+    c_codegen = ASTToC_Generator(args.filename, c_gen_from_ast_filename)
     c_code = c_codegen.generate(ast)
 
     print("\nC Code:")
@@ -172,18 +192,58 @@ if __name__ == "__main__":
     print(c_code)
     print("-" * 70)
 
-    # save the generated C code to its own .c file:
-    with open(c_file_name_2, 'w') as f:
+    # save the ast-based C code to its own .c file:
+    with open(c_gen_from_ast_filename, 'w') as f:
         f.write(c_code)
-    print(f"\nC code translation saved to: {c_file_name_2}")
+    print(f"\nC code translation saved to: {c_gen_from_ast_filename}")
     
-    # attempt to compile the resulting .c file
+    # attempt to compile the resulting ast-based .c file
     try:
-        subprocess.run(["gcc", "-o", c_compiled_file_name_2, c_file_name_2],
+        subprocess.run(["gcc", "-o", c_gen_from_ast_compiled_filename,
+                        c_gen_from_ast_filename],
                        check=True, capture_output=True)
-        print(f"Successfully compiled {c_file_name_2}"
+        print(f"Successfully compiled {c_gen_from_ast_filename}"
               "\nExecutable saved to: "
-              f"{c_compiled_file_name_2}\n")
+              f"{c_gen_from_ast_compiled_filename}\n")
+    except Exception as the_exception:
+        print("Unable to compile C file.\n")
+        print(f"EXCEPTION: {the_exception}")
+    
+
+    # ======================================== #
+    # Generate, display, and save to .c file   #
+    # the C code version of the WHILE program  #
+    # DERIVED FROM the CFG                     #
+    # ======================================== #
+
+    # USAGE: CCodeGenerator(source_file, output_c_file)
+    # source_file is the original .while file (given as an arg
+    # when running compiler_ast_to_c.py);
+    # output_c_file is the desired name of the resulting .c file
+    # Neither is actively used in the cfg.py code EXCEPT to provide
+    # info for header comments written in the eventual .c file.
+
+    cfg_to_c_codegen = CFGToC_Generator(args.filename, c_gen_from_cfg_filename)
+    c_code_from_cfg = cfg_to_c_codegen.generate(cfg_nodes)
+
+    print("\nC Code:")
+    print("-" * 70)
+    print(c_code_from_cfg)
+    print("-" * 70)
+
+    # save the cfg-based C code to its own .c file:
+    with open(c_gen_from_cfg_filename, 'w') as f:
+        f.write(c_code_from_cfg)
+    print(f"\nC code translation saved to: {c_gen_from_cfg_filename}")
+    
+    # attempt to compile the resulting ast-based .c file
+    try:
+        subprocess.run(["gcc", "-o", c_gen_from_cfg_compiled_filename,
+                        c_gen_from_cfg_filename],
+                       check=True, capture_output=True)
+        print(f"Successfully compiled {c_gen_from_cfg_filename}"
+              "\nExecutable saved to: "
+              f"{c_gen_from_cfg_compiled_filename}\n")
     except Exception as the_exception:
         print("Unable to compile C file.\n")
         print(f"EXCEPTION: {the_exception}")
