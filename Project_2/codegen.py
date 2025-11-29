@@ -12,7 +12,7 @@ description:  Implements the RISC_V_CodeGenerator class to convert a
 class RISC_V_CodeGenerator:
     """
     RISC-V Code Generator
-    Uses register allocation strategy instead of stack machine model
+    Uses register allocation strategy and stack machine when necessary
     """
     
     def __init__(self, name="generated_function"):
@@ -26,12 +26,7 @@ class RISC_V_CodeGenerator:
         self.max_stack = 0
 
         self.var_map = {}       # Map variable names to s registers (s1, s2, s3, ...)
-        self.label_counter = 0
         self.variables = []     # List of all variables in order
-
-        self.cfg = None          # The CFG being processed
-        self.visited_nodes = set()  # Track visited CFG nodes
-        self.label_to_asm_label = {}  # Map CFG label to assembly label
 
     def gen(self, instruction):
         """
@@ -49,9 +44,6 @@ class RISC_V_CodeGenerator:
         Returns:
             String containing RISC-V assembly code
         """
-        self.visited_nodes.clear()
-        self.label_to_asm_label.clear()
-        
         # Collect variables from CFG nodes
         self._collect_variables_from_cfg(nodes)
         
@@ -74,9 +66,7 @@ class RISC_V_CodeGenerator:
         """
         self.variables = []
         self._collect_vars_from_ast_node(nodes[0].ast)
-        
         self.variables = sorted(self.variables)
-        print(self.variables)
         
         # Map variables to s registers (s1, s2, s3, ...)
         for i, var in enumerate(self.variables):
@@ -85,10 +75,7 @@ class RISC_V_CodeGenerator:
     def _collect_vars_from_ast_node(self, node):
         """
         Recursively collect variables from an AST node
-        """
-        if node is None:
-            return
-        
+        """        
         if node.type == "var" and node.value not in self.variables:
             self.variables.append(node.value)
         elif hasattr(node, 'children'):
