@@ -25,8 +25,8 @@ class CFG:
         succ_labels = []
         for succ in self.succ:
             succ_labels.append("(" + str(succ.label) + ") " + succ.content)
-        succ_labes_str = " ,".join(succ_labels)
-        return f"({self.label}) {self.content} --> [{succ_labes_str}]"
+        succ_labels_str = " ,".join(succ_labels)
+        return f"({self.label}) {self.content} --> [{succ_labels_str}]"
 
 def ast_to_cfg(ast):
     """
@@ -70,20 +70,32 @@ def node_from_cfg(ast, next_node, all_nodes):
     """
 
     if ast.type == "seq":
-        return node_from_cfg(ast.children[0], node_from_cfg(ast.children[1], next_node, all_nodes), all_nodes)
+        return node_from_cfg(ast.children[0],
+                node_from_cfg(ast.children[1], next_node, all_nodes), all_nodes)
     elif ast.type in ["assign", "skip"]:
-        node = CFG(label=ast.l, ast=ast, type="other", content=cfg_content_from_ast(ast))
+        node = CFG(label=ast.l, ast=ast, type="other",
+                   content=cfg_content_from_ast(ast))
         all_nodes.append(node)
         node.succ.append(next_node)
         return node
     elif ast.type == "while":
-        node = CFG(label=ast.children[0].l, ast=ast.children[0], type="condition", content=cfg_content_from_ast(ast))
+        # modifed the node creation below to include more details from
+        # the associate AST at the WHILE node location
+        # node = CFG(label=ast.children[0].l, ast=ast.children[0],
+        #            type="condition", content=cfg_content_from_ast(ast))
+        node = CFG(label=ast.children[0].l, ast=ast, type="condition",
+                   content=cfg_content_from_ast(ast.children[0]))
         all_nodes.append(node)
         node.succ.append(node_from_cfg(ast.children[1], node, all_nodes))
         node.succ.append(next_node)
         return node
     elif ast.type == "if":
-        node = CFG(label=ast.children[0].l, ast=ast.children[0], type="condition", content=cfg_content_from_ast(ast))
+        # modifed the node creation below to include more details from
+        # the associate AST at the IF node location
+        # node = CFG(label=ast.children[0].l, ast=ast.children[0],
+        #            type="condition", content=cfg_content_from_ast(ast))
+        node = CFG(label=ast.children[0].l, ast=ast, type="condition",
+                   content=cfg_content_from_ast(ast.children[0]))
         all_nodes.append(node)
         node.succ.append(node_from_cfg(ast.children[1], next_node, all_nodes))
         node.succ.append(node_from_cfg(ast.children[2], next_node, all_nodes))
@@ -98,7 +110,8 @@ def cfg_content_from_ast(ast):
 
     Returns: string
     """
-    ops = ["=", "<", ">", "<=", ">=", "and", "add", "sub", "mult", "or", "assign"]
+    ops = ["=", "<", ">", "<=", ">=", "and",
+           "add", "sub", "mult", "or", "assign"]
     if ast.type in ["int", "var", "true", "false", "skip"]:
         return f"{ast.value}"
     elif ast.type in ops:
