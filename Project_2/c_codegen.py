@@ -1,20 +1,21 @@
 """
-filename:     codegen_ast_to_c.py
+filename:     c_codegen.py
 authors:      Warren Craft
 author note:  based on earlier work authored with project partners
               Jaime Gould & Qinghong Shao
 created:      2025-11-23
-last updated: 2025-11-25
-description:  Implements the ASTToCodeGenerator class to convert an
-              abstract syntax tree (AST), produced from the scanning
-              and parsing of a WHILE language program, to C code.
+last updated: 2025-11-30
+description:  Implements the ASTToC_Generator and CFGToC_Generator
+              classes to convert an abstract syntax tree (AST), or
+              a control flow graph (CFG), respectively, to C code
+              corresponding to a WHILE language program upon which
+              the AST and CFG are based.
               This code is based on the RISC_V_CodeGenerator class
               previously developed with co-authors Jaime Gould &
               Qing Shao.
               Created for CS 554 (Compiler Construction) at UNM.
 """
 
-from typing import List, Any
 from datetime import date
 
 
@@ -173,7 +174,7 @@ class ASTToC_Generator:
         for i in range(num_vars):
             self.gen("    int " + self.variables[i] + f" = var_values[{i}];")
         self.gen(f"")
-        self.gen(f'    printf("Initial variable values are:\\n");')
+        self.gen(f'    printf("\\nInitial variable values are:\\n");')
         self.gen(f"")
 
         # Generate commands to print initialized variable values
@@ -324,8 +325,6 @@ class ASTToC_Generator:
             return []
         # else we have a non-empty while() loop,
         # so construct the lines of code and return
-        print(f"body_construct = {body_construct}")
-        print(f"condition_str = {condition_str}")
         while_construct = (
             [self.indent() + "while (" + condition_str + ") {"]
             + body_construct
@@ -406,8 +405,6 @@ class CFGToC_Generator:
         self.cfg = None          # The CFG being processed
         self.visited_nodes = set()  # Track visited CFG nodes
         self.label_to_asm_label = {}  # Map CFG label to assembly label
-        print(f"\nCFGToC_Generator Initialized!\n")
-        print(f"\nself.variables = {self.variables}")
 
         self.type_to_value_map = {
             "add" : "+",
@@ -449,7 +446,6 @@ class CFGToC_Generator:
         # Establish alpha-ordered list of all variables,
         # collecting variables from CFG nodes
         self._collect_variables_from_cfg(cfg_nodes)
-        print(f"\nself.variables = {self.variables}\n")
 
         # Generate the initial part of the C code
         self._gen_c_file_start()
@@ -541,7 +537,7 @@ class CFGToC_Generator:
         for i in range(num_vars):
             self.gen("    int " + self.variables[i] + f" = var_values[{i}];")
         self.gen(f"")
-        self.gen(f'    printf("Initial variable values are:\\n");')
+        self.gen(f'    printf("\\nInitial variable values are:\\n");')
         self.gen(f"")
 
         # Generate commands to print initialized variable values
@@ -581,8 +577,6 @@ class CFGToC_Generator:
 
         for i in range(len(cfg_nodes)):
             node = cfg_nodes[i]
-            print(f"In _gen_c_from_cfg, considering node {node.label}")
-            print(f"self.visited_nodes = {self.visited_nodes}")
             if node.label not in self.visited_nodes:
                 # self.visited_nodes.add(node.label)
                 if node.type == "other":
@@ -709,137 +703,26 @@ class CFGToC_Generator:
         # expr = node.children[1]
         _rhs = self._construct_expression(expr)
         return [self.indent() + var_name + " = " + _rhs + ";"]
-    
-    # def _construct_if_statement(self, node):
-    #     """
-    #     Generate if statement code, and pass resulting lines of
-    #     code back up to more general construction method
-    #     """
-    #     print(f"Constructing if statement: {node}")
-    #     print(f"self.visited_nodes = {self.visited_nodes}")
-    #     # condition = node.children[0]
-    #     condition = node.ast
-    #     # true_block = node.children[1]
-    #     true_block_root = node.succ[0]
-    #     print(f"true_block_root = {true_block_root}")
-    #     # else_block = node.children[2]
-    #     else_block_root = node.succ[1]
-    #     print(f"else_block_root = {else_block_root}")
-
-    #     # Some work to determine the 'merge node' where the 
-    #     # true/else paths come back together
-    #     _true_traversal_list = self._df_traversal_list(true_block_root)
-    #     # for inspection
-    #     _true_traversal_list_labels = []
-    #     for item in _true_traversal_list:
-    #         _true_traversal_list_labels.append(item.label)
-    #     print(f"_true_traversal_list_labels = {_true_traversal_list_labels}")
-    #     # end inspection
-    #     print(f"_true_traversal_list = {_true_traversal_list}")
-    #     _else_traversal_list = self._df_traversal_list(else_block_root)
-    #     # for inspection
-    #     _else_traversal_list_labels = []
-    #     for item in _else_traversal_list:
-    #         _else_traversal_list_labels.append(item.label)
-    #     print(f"_else_traversal_list_labels = {_else_traversal_list_labels}")
-    #     # end inspection
-    #     print(f"_else_traversal_list = {_else_traversal_list}")
-    #     _merge_nodes = list(set(_true_traversal_list).intersection(
-    #             _else_traversal_list))
-    #     print(f"_merge_nodes = {_merge_nodes}")
-    #     _first_idx = _true_traversal_list.index(_merge_nodes[0])
-    #     for _merge_node in _merge_nodes:
-    #         _idx = _true_traversal_list.index(_merge_node)
-    #         _first_idx = min(_first_idx, _idx)
-    #     _merge_node = _true_traversal_list[_first_idx]
-    #     print(f"_merge_node = {_merge_node}")
-    #     print(f"_merge_node_label = {_merge_node.label}")
-
-    #     condition_str = self._construct_expression(condition)
-
-    #     self.indent_level += 1 # for constructing true/else blocks
-
-    #     true_construct = self._construct_statement(true_block_root)
-    #     # next_node = body_root
-    #     next_true_node = true_block_root
-    #     while _merge_node not in next_true_node.succ:
-    #         print(f"_merge_node = {_merge_node}")
-    #         # next_true_node = next_true_node.succ[0]
-    #         if next_true_node.succ[0].label not in self.visited_nodes:
-    #             next_true_node = next_true_node.succ[0]
-    #         else:
-    #             next_true_node = next_true_node.succ[1]
-    #         print(f"Adding node {next_true_node} to true_construct!")
-    #         print(f"self.visited_nodes = {self.visited_nodes}")
-    #         print()
-    #         true_construct += self._construct_statement(next_true_node)
-
-    #     else_construct = self._construct_statement(else_block_root)
-    #     next_else_node = else_block_root
-    #     while _merge_node not in next_else_node.succ:
-    #         print(f"_merge_node = {_merge_node}")
-    #         # next_else_node = next_else_node.succ[0]
-    #         if next_else_node.succ[0].label not in self.visited_nodes:
-    #             next_else_node = next_else_node.succ[0]
-    #         else:
-    #             next_else_node = next_else_node.succ[1]
-    #         print(f"Adding node {next_else_node} to else_construct!")
-    #         print(f"self.visited_nodes = {self.visited_nodes}")
-    #         print()
-    #         else_construct += self._construct_statement(next_else_node)
-
-    #     self.indent_level -= 1 # adjust after leaving true/else blocks
-    #     if  true_construct == [] and else_construct == []:
-    #         return []
-    #     # else we have an if-then-else with at least one non-empty
-    #     # block, so construct the lines of code and return
-    #     if_construct = (
-    #             [self.indent() + "if (" + condition_str + ") {"]
-    #             + true_construct
-    #     )
-    #     if else_construct:
-    #         # we have a non-empty else block
-    #         if_construct = (
-    #                 if_construct
-    #                 + [self.indent() + "} else {"]
-    #                 + else_construct
-    #                 + [self.indent() + "}"] )
-    #     else:
-    #         # we have an empty else block, so omit the else portion
-    #         if_construct = (
-    #                 if_construct + [self.indent() + "}"])
-
-    #     return if_construct
-    
+        
     def _construct_if_statement(self, node):
         """
         BORROWED from the ASTToC_Generator process.
         Generate if statement code, and pass resulting lines of
         code back up to more general construction method
         """
-        print(f"if_node.ast = {node.ast}")
         condition = node.ast.children[0]
         true_block = node.ast.children[1]
-        print(f"true_block = {true_block}")
-        print(f"true_block.type = {true_block.type}")
-        if true_block.type == "seq":
-            for i, child in enumerate(true_block.children):
-                print(f"    ({i}) {child} ")
         num_true_stmts = 0
         if true_block.type == "seq":
-            print(f"    true_block has {len(true_block.children)} items.")
             num_true_stmts = len(true_block.children)
         else:
-            print(f"    true_block has 1 item.")
             num_true_stmts = 1
 
         else_block = node.ast.children[2]
         num_else_stmts =  0
         if else_block.type == "seq":
-            print(f"    else_block has {len(else_block.children)} items.")
             num_else_stmts = len(else_block.children)
         else:
-            print(f"    else_block has 1 item.")
             num_else_stmts = 1
 
         condition_str = self._construct_expression(condition)
@@ -854,9 +737,7 @@ class CFGToC_Generator:
             next_true_node = true_block_root
             while _stmts_added < num_true_stmts:
                 next_true_node = next_true_node.succ[0]
-                print(f"Attempting to add node {next_true_node} to true_construct!")
                 true_construct += self._construct_statement(next_true_node)
-                print(f"Added node {next_true_node} to true_construct!")
                 _stmts_added += 1
 
         else_block_root = node.succ[1]
@@ -866,9 +747,7 @@ class CFGToC_Generator:
             next_else_node = else_block_root
             while _stmts_added < num_true_stmts:
                 next_else_node = next_else_node.succ[0]
-                print(f"Attempting to add node {next_else_node} to else_construct!")
                 else_construct += self._construct_statement(next_else_node)
-                print(f"Added node {next_else_node} to else_construct!")
                 _stmts_added += 1
 
         self.indent_level -= 1 # adjust after leaving true/else blocks
@@ -903,7 +782,6 @@ class CFGToC_Generator:
         being empty.
         """
         while_node = node
-        print(f"while_node = {while_node}")
         # condition = node.ast # changed temporarily while playing with ast stored in CFG
         condition = node.ast.children[0]
         body_root = node.succ[0]    # should only be one successor for WHILE
@@ -911,11 +789,6 @@ class CFGToC_Generator:
         body_construct = self._construct_statement(body_root)
         next_node = body_root
         while while_node not in next_node.succ:
-            print(f"while_node = {while_node}")
-            print(f"Adding node {next_node} to body_construct!")
-            print(f"self.visited_nodes = {self.visited_nodes}")
-            # print()
-            # next_node = next_node.succ[0]
             if next_node.succ[0].label not in self.visited_nodes:
                 next_node = next_node.succ[0]
             else:

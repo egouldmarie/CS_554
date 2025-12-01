@@ -1,10 +1,30 @@
+"""
+filename:     cfg.py
+authors:      Warren Craft
+author note:  Based on earlier and on-going work authored with
+              project partners Jaime Gould & Qinghong Shao, with
+              Jaime accomplishing a recent serious revamping and
+              simplification.
+created:      2025-11-23
+last updated: 2025-11-30
+description:  Implements the CFG class and related class and utility
+              functions to represent and construct control flow graphs
+              (CFGs) and CFG nodes. This file varies slightly from
+              our group project version file of the same name.
+              Created for CS 554 (Compiler Construction) at UNM.
+"""
+
 class CFG:
     """
     A CFG node containing the AST node associated with its block of code,
     the type of CFG node it is ("entry", "exit", "condition", or "other"),
     its associated label, the content from the AST, and a list of
     successors and predecessors in the graph.
-
+    The associated non-class function node_from_cfg() defined further
+    below has been slightly modified from the group project version to
+    allow a fuller version of a node's associated AST in the case of
+    the WHILE-DO and IF-THEN-ELSE nodes, in part to allow the 
+    complete instantiation of the WHILE program's CFG to C Code.
     """
     def __init__(self, label, ast=None, type=None, content=None):
         self.ast = ast
@@ -16,12 +36,16 @@ class CFG:
         self.pred = []
 
     def __repr__(self):
-        # To facilitate printing and debugging.
+        # Two options to facilitate printing and debugging.
         if self.succ == []:
             return f"{self.content}"
+        # (1) save this option here for future;
+        #     see further below for alternative
         # elif self.type == 'var':
         #     return f"{self.value}"
         # return f"({self.label}) {self.content} --> {self.succ}"
+        # (2) This option allows more circumscribed output of
+        #     individual nodes.
         succ_labels = []
         for succ in self.succ:
             succ_labels.append("(" + str(succ.label) + ") " + succ.content)
@@ -30,12 +54,13 @@ class CFG:
 
 def ast_to_cfg(ast):
     """
-    Generate CFG from decorated AST.
-
-    Args:
+    Generate control flow graph (CFG) from a decorated abstract
+    syntax tree (AST).
+    Arg:
         ast: decorated AST root node
-
-    Returns: the entry node of the CFG and the list of all nodes
+    Returns:
+        entry, all_nodes: the entry node of the CFG and a list of
+                          all nodes ordered by unique node labels
     """
     # set up entry and exit nodes
     entry = CFG(label="entry", ast=ast, type='entry', content='ENTRY')
@@ -61,12 +86,15 @@ def ast_to_cfg(ast):
 
 def node_from_cfg(ast, next_node, all_nodes):
     """
-        Generates CFG node from the decorated AST.
-
-        Args:
-            ast: the decorated AST node associated with this CFG node
-            next_node: the successor of the CFG node currently being created
-            all_nodes: array of all CFG nodes to append newly generated nodes to
+    Utility function used by ast_to_cfg(), generating a CFG node
+    from the corresponding node in the decorated AST.
+    Args:
+        ast:       the decorated AST node associated with the desire
+                   CFG node to construct
+        next_node: the successor of the CFG node currently being 
+                   created
+        all_nodes: array of all CFG nodes to which to append
+                   newly generated nodes
     """
 
     if ast.type == "seq":
@@ -103,11 +131,9 @@ def node_from_cfg(ast, next_node, all_nodes):
 
 def cfg_content_from_ast(ast):
     """
-    Generate string representation of .while code from AST node
-
+    Generate string representation of .while code from AST node.
     Args:
         ast: AST node
-
     Returns: string
     """
     ops = ["=", "<", ">", "<=", ">=", "and",
@@ -133,8 +159,8 @@ def cfg_content_from_ast(ast):
 
 def generate_cfg_dot(nodes, filename="cfg.dot"):
     """
-    Generate a Graphviz DOT file for visualizing the Control Flow Graph.
-
+    Generate a Graphviz DOT file for visualizing the control flow graph
+    (CFG), using color-coding for blocks and edges.
     Args:
         nodes: list of Control Flow Graph nodes
         filename: Output filename for the DOT file
@@ -159,7 +185,9 @@ def generate_cfg_dot(nodes, filename="cfg.dot"):
             color = "white"
 
         node_id = f"node_{node.label}"
-        dot_content.append(f'    "{node_id}" [label="{label_str}", fillcolor={color}, style="rounded,filled"];')
+        dot_content.append(
+                f'    "{node_id}" [label="{label_str}", '
+                f'fillcolor={color}, style="rounded,filled"];')
 
     dot_content.append("")
 
@@ -170,7 +198,9 @@ def generate_cfg_dot(nodes, filename="cfg.dot"):
             suc = node.succ[s]
             succ_id = f"node_{suc.label}"
             if len(node.succ) > 1:
-                dot_content.append(f'    "{node_id}" -> "{succ_id}"[color="{"green" if s==0 else "red"}"];')
+                dot_content.append(
+                        f'    "{node_id}" -> "{succ_id}"'
+                        f'[color="{"green" if s==0 else "red"}"];')
             else:
                 dot_content.append(f'    "{node_id}" -> "{succ_id}";')
 

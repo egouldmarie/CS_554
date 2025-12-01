@@ -4,10 +4,10 @@ authors:      Warren Craft
 author note:  based on earlier work authored with project partners
               Jaime Gould & Qinghong Shao
 created:      2025-11-23
-last updated: 2025-11-23
-description:  Coordinates actions of Scanner, Parser, and
-              CCodeGenerator classes for the compiling of a
-              WHILE language programs into corresponding C programs.
+last updated: 2025-11-30
+description:  Coordinates actions of Scanner, Parser, ASTToC_Generator,
+              and CFGToC_Generator classes for the compiling of a
+              WHILE language program into a corresponding C program.
               Code based on the compiler.py code previously
               developed with co-authors Jaime Gould & Qing Shao.
               Created for CS 554 (Compiler Construction) at UNM.
@@ -19,8 +19,8 @@ import subprocess
 
 from parser import Parser
 from scanner import Tokenize
-from codegen import RISC_V_CodeGenerator
-from codegen_ast_to_c import ASTToC_Generator, CFGToC_Generator
+# from codegen import RISC_V_CodeGenerator
+from c_codegen import ASTToC_Generator, CFGToC_Generator
 from trees import decorate_ast, insert_labels, generate_dot_from_tree
 from cfg import ast_to_cfg, generate_cfg_dot
 
@@ -86,20 +86,22 @@ if __name__ == "__main__":
     with open(args.filename, "r") as f:
         whileCode = f.read()
 
-    print("\nInput WHILE code:")
+    print("\nSource WHILE code:")
     print("-" * 70)
     print(whileCode)
     print("-" * 70)
 
-    # ---text---> scanner --tokens-->
-    print("\nGenerated tokens:")
-    print("-" * 70)
+    # generate tokens (using scanner.py)
+    if args.verbose:
+        print("\nGenerated tokens:")
+        print("-" * 70)
     tokens = []
     for token in Tokenize(whileCode):
-        print(token)
+        if args.verbose:
+            print(token)
         tokens.append(token)
-
-    print("-" * 70)
+    if args.verbose:
+        print("-" * 70)
 
     # ================================ #
     #  Init a Parser with tokens       #
@@ -115,16 +117,18 @@ if __name__ == "__main__":
     parse_tree = parse_tree.root
     ast = ast.root
 
-    print("\nParse Tree (PT):")
-    print("-" * 70)
-    print(f"{parse_tree}")
-    print("-" * 70)
+    if args.verbose:
+        print("\nParse Tree (PT):")
+        print("-" * 70)
+        print(f"{parse_tree}")
+        print("-" * 70)
 
-    print("\nAbstract Syntax Tree (AST):")
-    print("-" * 70)
-    print(f"{ast}")
-    print("-" * 70)
-    print("\n")
+    if args.verbose:
+        print("\nAbstract Syntax Tree (AST):")
+        print("-" * 70)
+        print(f"{ast}")
+        print("-" * 70)
+        print("\n")
 
     # ============================ #
     #  Generate graphic rep of PT  #
@@ -144,7 +148,8 @@ if __name__ == "__main__":
            "resulting abstract syntax tree (AST).")
 
     labeled_code = insert_labels(ast, whileCode)[0]
-    print(labeled_code)
+    if args.verbose:
+        print(labeled_code)
     with open(labeled_source, 'w') as f:
         f.write(labeled_code)
     print(f"\nLabeled code saved to: {labeled_source}\n")
@@ -155,46 +160,34 @@ if __name__ == "__main__":
     print("\nGenerating Control Flow Graph (CFG)...")
     print("-" * 70)
     cfg, cfg_nodes = ast_to_cfg(ast)
-    # TESTING =================================== #
-    print(f"cfg = {cfg}")
-    for node in cfg_nodes:
-        print(f"node.type = {node.type}")
-        print(f"node.label = {node.label}")
-        print(f"node.content = {node.content}")
-        print(f"node.ast = {node.ast}")
-    print("")
-    for node in cfg_nodes:
-        print(f"{node}")
-    # END TESTING =============================== #
     generate_cfg_dot(cfg_nodes, filename=cfg_file)
-    # print(f"CFG DOT file saved to: {cfg_file}")
-    # print(f"CFG contains {len(cfg.nodes)} nodes.")
     print("-" * 70)
     print()
 
     # ======================================== #
     # Generate, display, and save to .c file   #
-    # the C code version of the WHILE program  #
+    # the AST-based C code version of the      #
+    # WHILE program                            #
     # ======================================== #
 
-    # USAGE: CCodeGenerator(source_file, output_c_file)
+    # USAGE: ASTToC_Generator(source_file, output_c_file)
     # source_file is the original .while file (given as an arg
     # when running compiler_ast_to_c.py);
     # output_c_file is the desired name of the resulting .c file
     # Neither is actively used in the cfg.py code EXCEPT to provide
     # info for header comments written in the eventual .c file.
 
-    c_codegen = ASTToC_Generator(args.filename, c_gen_from_ast_filename)
-    c_code = c_codegen.generate(ast)
+    ast_to_c_codegen = ASTToC_Generator(args.filename, c_gen_from_ast_filename)
+    c_code_from_ast = ast_to_c_codegen.generate(ast)
 
-    print("\nC Code:")
+    print("\nC Code generated from AST:")
     print("-" * 70)
-    print(c_code)
+    print(c_code_from_ast)
     print("-" * 70)
 
     # save the ast-based C code to its own .c file:
     with open(c_gen_from_ast_filename, 'w') as f:
-        f.write(c_code)
+        f.write(c_code_from_ast)
     print(f"\nC code translation saved to: {c_gen_from_ast_filename}")
     
     # attempt to compile the resulting ast-based .c file
@@ -212,11 +205,11 @@ if __name__ == "__main__":
 
     # ======================================== #
     # Generate, display, and save to .c file   #
-    # the C code version of the WHILE program  #
-    # DERIVED FROM the CFG                     #
+    # the CFG-based C code version of the      #
+    # WHILE program                            #
     # ======================================== #
 
-    # USAGE: CCodeGenerator(source_file, output_c_file)
+    # USAGE: CFGToC_Generator(source_file, output_c_file)
     # source_file is the original .while file (given as an arg
     # when running compiler_ast_to_c.py);
     # output_c_file is the desired name of the resulting .c file
@@ -226,7 +219,7 @@ if __name__ == "__main__":
     cfg_to_c_codegen = CFGToC_Generator(args.filename, c_gen_from_cfg_filename)
     c_code_from_cfg = cfg_to_c_codegen.generate(cfg_nodes)
 
-    print("\nC Code:")
+    print("\nC Code generated from CFG:")
     print("-" * 70)
     print(c_code_from_cfg)
     print("-" * 70)
@@ -236,7 +229,7 @@ if __name__ == "__main__":
         f.write(c_code_from_cfg)
     print(f"\nC code translation saved to: {c_gen_from_cfg_filename}")
     
-    # attempt to compile the resulting ast-based .c file
+    # attempt to compile the resulting cfg-based .c file
     try:
         subprocess.run(["gcc", "-o", c_gen_from_cfg_compiled_filename,
                         c_gen_from_cfg_filename],
