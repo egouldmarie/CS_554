@@ -1,0 +1,44 @@
+{-
+  Contributed by Fall 2023 Team C-=-1 (C++)
+  Akhil Reddy Alasandagutti
+  Akil Andrews
+  Nicholas Bacon
+  Christopher Pitts
+-}
+mod := input {- LABEL 0 -};
+while not[mod=1 or mod=0 {- LABEL 1 -}] do
+    mod:=mod-2 {- LABEL 2 -}
+od;
+if mod = 1 {- LABEL 3 -} then
+    input:= input - 2 {- LABEL 4 -}
+else
+    input:= input - 1 {- LABEL 5 -}
+fi;
+i := input {- LABEL 6 -};
+stop1 := 0 {- LABEL 7 -};
+while i >= 2 and stop1 = 0 {- LABEL 8 -} do
+    sqrt := 1 {- LABEL 9 -};
+    while sqrt*sqrt <=i {- LABEL 10 -} do
+       sqrt:=sqrt+1 {- LABEL 11 -}
+    od;
+    j := 3 {- LABEL 12 -};
+    stop := 0 {- LABEL 13 -};
+    while j <= sqrt and stop = 0 {- LABEL 14 -} do
+        mod := i {- LABEL 15 -};
+        while  mod > 0 {- LABEL 16 -} do
+            mod:=mod-j {- LABEL 17 -}
+        od;
+        if mod = 0 {- LABEL 18 -} then
+           stop := 1 {- LABEL 19 -}
+        else
+            j := j+ 2 {- LABEL 20 -}
+        fi
+    od;
+     if j > sqrt {- LABEL 21 -} then
+        stop1 := 1 {- LABEL 22 -}
+     else
+        i := i - 2 {- LABEL 23 -}
+     fi
+od;
+closestprime := i {- LABEL 24 -};
+output := closestprime {- LABEL 25 -}

@@ -1,0 +1,22 @@
+{-
+  compute Collatz
+  input number is "input"
+  output is the number of steps, in "output"
+-}
+n := input {- LABEL 0 -};
+steps := 0 {- LABEL 1 -};
+while n > 1 {- LABEL 2 -} do
+  rem := n {- LABEL 3 -};
+  quot := 0 {- LABEL 4 -};
+  while rem > 1 {- LABEL 5 -} do
+    rem := rem - 2 {- LABEL 6 -};
+    quot := quot + 1 {- LABEL 7 -}
+  od;
+  if rem = 0 {- LABEL 8 -} then
+    n := quot {- LABEL 9 -}
+  else
+    n := 3*n+1 {- LABEL 10 -}
+  fi;
+  steps := steps + 1 {- LABEL 11 -}
+od;
+output := steps {- LABEL 12 -}

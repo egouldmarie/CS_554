@@ -1,0 +1,17 @@
+{-
+  Fibonacci(n): compute the nth Fibonacci number.
+  input: n
+  output: output
+-}
+
+a := 0 {- LABEL 0 -};
+b := 1 {- LABEL 1 -};
+z := 0 {- LABEL 2 -};
+while not[n=z {- LABEL 3 -}] do
+  t := a+b {- LABEL 4 -};
+  a := b {- LABEL 5 -};
+  b := t {- LABEL 6 -};
+  n := n-1 {- LABEL 7 -};
+  z := 0 {- LABEL 8 -}
+od;
+output := a {- LABEL 9 -}
