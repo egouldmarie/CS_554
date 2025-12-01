@@ -409,6 +409,19 @@ class CFGToC_Generator:
         print(f"\nCFGToC_Generator Initialized!\n")
         print(f"\nself.variables = {self.variables}")
 
+        self.type_to_value_map = {
+            "add" : "+",
+            "sub" : "-",
+            "mult": "*",
+            "and" : "&&",
+            "or"  : "||",
+            "="   : "==",
+            "<"   : "<",
+            "<="  : "<=",
+            ">"   : ">",
+            ">="  : ">="
+        }
+
     def indent(self): # DONE
         """
         Return a multiple of an indentation string (used in
@@ -445,45 +458,18 @@ class CFGToC_Generator:
         self.indent_level += 1
 
         # Generate the WHILE-equivalent code from the CFG
-        # TBA
-        # self._generate_statement(ast)
+        # UNDER CONSTRUCTION
+        self._gen_c_from_cfg(cfg_nodes)
 
         # Generate the end of the C code
         self._gen_c_file_end()
 
         return "\n".join(self.code)
     
-    # def generate(self, nodes) -> str:
-    #     """
-    #     Main code generation function - generates code from CFG
-    #     Args:
-    #         nodes: list of control flow graph nodes
-    #     Returns:
-    #         String containing C code
-    #     """
-    #     self.visited_nodes.clear()
-    #     self.label_to_asm_label.clear()
-        
-    #     # Collect variables from CFG nodes
-    #     self._collect_variables_from_cfg(nodes)
-        
-    #     # Generate code from CFG nodes
-    #     self._generate_from_cfg(nodes)
-        
-    #     # Generate function prologue (load variables into s registers)
-    #     self._emit_function_prologue()
-
-    #     # Generate function epilogue (save s registers back to memory)
-    #     self._emit_function_epilogue()
-
-    #     self.code = self.prologue + self.code + self.epilogue
-        
-    #     return "\n".join(self.code)
-    
     def _collect_variables_from_cfg(self, nodes):
         """
         Construct a list of all variables appearing in the CFG.
-        This uses the rot node of the CG and then relies on the AST
+        This uses the root node of the CFG and then relies on the AST
         from which the CFG is generated.
         """
         self.variables = []
@@ -585,12 +571,367 @@ class CFGToC_Generator:
         self.gen(f"")
         self.gen(f"}}")
     
-    def _gen_c_from_cfg(self, cfg):
+    def _gen_c_from_cfg(self, cfg_nodes):
         '''
-        Generate C code from the CFG nodes.
+        Generate C code from the CFG nodes. This is the main CFG
+        traversal function, utilizing the list cfg_nodes of CFG nodes
+        (instead of the literal root of the CFG).
         '''
-        pass
+        ASSIGN = ":="
 
+        for i in range(len(cfg_nodes)):
+            node = cfg_nodes[i]
+            print(f"In _gen_c_from_cfg, considering node {node.label}")
+            print(f"self.visited_nodes = {self.visited_nodes}")
+            if node.label not in self.visited_nodes:
+                # self.visited_nodes.add(node.label)
+                if node.type == "other":
+                    self.code += self._construct_statement(node)
+                elif node.type == "condition":
+                    _while_or_if_construct = self._construct_statement(node)
+                    if _while_or_if_construct:
+                        self.code += _while_or_if_construct
+                else:
+                    pass
+
+    # def _generate_statement(self, node):
+    #     """
+    #     Generate statement code
+    #     """
+    #     if node.type == "seq":
+    #         self._generate_statement(node.children[0]) # left node
+    #         self._generate_statement(node.children[1]) # right node
+    #     elif node.type == "assign":
+    #         self.code += self._construct_statement(node)
+    #     elif node.type == "if":
+    #         _if_construct = self._construct_statement(node)
+    #         if _if_construct:
+    #             self.code += _if_construct
+    #     elif node.type == "while":
+    #         _while_construct = self._construct_statement(node)
+    #         if self._construct_statement(node):
+    #             self.code += _while_construct
+    #     elif node.type == "skip":
+    #         _skip_construct = self._construct_statement(node)
+    #         if _skip_construct:
+    #             self.code += _skip_construct
+
+    def _construct_statement(self, node):
+        '''
+        Construct statement code without immediately adding it
+        to the output code, returning the construction (in the
+        form of a (possibly empty) list of statement strings) to
+        the calling function. Such constructions are ultimately
+        added to self.code list of lines of code by the
+        generate_statement() function.
+        '''
+        ASSIGN = ":="
+        IF = "if"
+        SKIP   = "skip"
+        WHILE  = "while"
+        # TESTING HERE if we need to re-check visited_nodes
+        # self.visited_nodes.add(node.label)
+        # if node.type == "other" and ASSIGN in node.content:
+        #     # assignment such as x := y + 2
+        #     return self._construct_assignment(node)
+        # elif node.type == "other" and SKIP in node.content:
+        #     # we have a 'skip'
+        #     return self._construct_skip_statement(node)
+        # elif node.type == "condition" and WHILE in node.content:
+        #     # while condition
+        #     return self._construct_while_statement(node)
+        # elif node.type == "condition" and IF in node.content:
+        #     # if condition
+        #     return self._construct_if_statement(node)
+        # else:
+        #     return []
+        if node.label not in self.visited_nodes:
+            self.visited_nodes.add(node.label)
+            if node.type == "other" and ASSIGN in node.content:
+                # assignment such as x := y + 2
+                return self._construct_assignment(node)
+            elif node.type == "other" and SKIP in node.content:
+                # we have a 'skip'
+                return self._construct_skip_statement(node)
+            # elif node.type == "condition" and WHILE in node.content: # experimenting with ast
+            elif node.type == "condition" and node.ast.type == WHILE:
+                # while condition
+                return self._construct_while_statement(node)
+            # elif node.type == "condition" and IF in node.content:
+            elif node.type == "condition" and node.ast.type == IF:
+                # if condition
+                return self._construct_if_statement(node)
+            else:
+                return []
+        else:
+            return []
+    
+    # def _construct_statement(self, node):
+    #     '''
+    #     Construct statement code without immediately adding it
+    #     to the output code, returning the construction (in the
+    #     form of a (possibly empty) list of statement strings) to
+    #     the calling function. Such constructions are ultimately
+    #     added to self.code list of lines of code by the
+    #     generate_statement() function.
+    #     '''
+    #     if node.type == "seq":
+    #         return (
+    #             self._construct_statement(node.children[0])   # left node
+    #           + self._construct_statement(node.children[1]) ) # right node
+    #     elif node.type == "assign":
+    #         return self._construct_assignment(node)
+    #     elif node.type == "if":
+    #         return self._construct_if_statement(node)
+    #     elif node.type == "while":
+    #         return self._construct_while_statement(node)
+    #     elif node.type == "skip":
+    #         return self._construct_skip_statement(node)
+
+    def _construct_skip_statement(self, node):
+        '''
+        Generate C code for a skip statement.
+        Generally, we choose to effectively skip such skip statements,
+        without adding any lines to the code. But we maintain the
+        infrastructure for possibly modifying this approach in the
+        future.
+        '''
+        return []
+        
+    def _construct_assignment(self, node):
+        """
+        Construct assignment statement code, and pass back up to
+        more general construction method
+        """
+        var_name = node.ast.children[0].value
+        # var_name = node.children[0].value
+        expr = node.ast.children[1]
+        # expr = node.children[1]
+        _rhs = self._construct_expression(expr)
+        return [self.indent() + var_name + " = " + _rhs + ";"]
+    
+    # def _construct_if_statement(self, node):
+    #     """
+    #     Generate if statement code, and pass resulting lines of
+    #     code back up to more general construction method
+    #     """
+    #     print(f"Constructing if statement: {node}")
+    #     print(f"self.visited_nodes = {self.visited_nodes}")
+    #     # condition = node.children[0]
+    #     condition = node.ast
+    #     # true_block = node.children[1]
+    #     true_block_root = node.succ[0]
+    #     print(f"true_block_root = {true_block_root}")
+    #     # else_block = node.children[2]
+    #     else_block_root = node.succ[1]
+    #     print(f"else_block_root = {else_block_root}")
+
+    #     # Some work to determine the 'merge node' where the 
+    #     # true/else paths come back together
+    #     _true_traversal_list = self._df_traversal_list(true_block_root)
+    #     # for inspection
+    #     _true_traversal_list_labels = []
+    #     for item in _true_traversal_list:
+    #         _true_traversal_list_labels.append(item.label)
+    #     print(f"_true_traversal_list_labels = {_true_traversal_list_labels}")
+    #     # end inspection
+    #     print(f"_true_traversal_list = {_true_traversal_list}")
+    #     _else_traversal_list = self._df_traversal_list(else_block_root)
+    #     # for inspection
+    #     _else_traversal_list_labels = []
+    #     for item in _else_traversal_list:
+    #         _else_traversal_list_labels.append(item.label)
+    #     print(f"_else_traversal_list_labels = {_else_traversal_list_labels}")
+    #     # end inspection
+    #     print(f"_else_traversal_list = {_else_traversal_list}")
+    #     _merge_nodes = list(set(_true_traversal_list).intersection(
+    #             _else_traversal_list))
+    #     print(f"_merge_nodes = {_merge_nodes}")
+    #     _first_idx = _true_traversal_list.index(_merge_nodes[0])
+    #     for _merge_node in _merge_nodes:
+    #         _idx = _true_traversal_list.index(_merge_node)
+    #         _first_idx = min(_first_idx, _idx)
+    #     _merge_node = _true_traversal_list[_first_idx]
+    #     print(f"_merge_node = {_merge_node}")
+    #     print(f"_merge_node_label = {_merge_node.label}")
+
+    #     condition_str = self._construct_expression(condition)
+
+    #     self.indent_level += 1 # for constructing true/else blocks
+
+    #     true_construct = self._construct_statement(true_block_root)
+    #     # next_node = body_root
+    #     next_true_node = true_block_root
+    #     while _merge_node not in next_true_node.succ:
+    #         print(f"_merge_node = {_merge_node}")
+    #         # next_true_node = next_true_node.succ[0]
+    #         if next_true_node.succ[0].label not in self.visited_nodes:
+    #             next_true_node = next_true_node.succ[0]
+    #         else:
+    #             next_true_node = next_true_node.succ[1]
+    #         print(f"Adding node {next_true_node} to true_construct!")
+    #         print(f"self.visited_nodes = {self.visited_nodes}")
+    #         print()
+    #         true_construct += self._construct_statement(next_true_node)
+
+    #     else_construct = self._construct_statement(else_block_root)
+    #     next_else_node = else_block_root
+    #     while _merge_node not in next_else_node.succ:
+    #         print(f"_merge_node = {_merge_node}")
+    #         # next_else_node = next_else_node.succ[0]
+    #         if next_else_node.succ[0].label not in self.visited_nodes:
+    #             next_else_node = next_else_node.succ[0]
+    #         else:
+    #             next_else_node = next_else_node.succ[1]
+    #         print(f"Adding node {next_else_node} to else_construct!")
+    #         print(f"self.visited_nodes = {self.visited_nodes}")
+    #         print()
+    #         else_construct += self._construct_statement(next_else_node)
+
+    #     self.indent_level -= 1 # adjust after leaving true/else blocks
+    #     if  true_construct == [] and else_construct == []:
+    #         return []
+    #     # else we have an if-then-else with at least one non-empty
+    #     # block, so construct the lines of code and return
+    #     if_construct = (
+    #             [self.indent() + "if (" + condition_str + ") {"]
+    #             + true_construct
+    #     )
+    #     if else_construct:
+    #         # we have a non-empty else block
+    #         if_construct = (
+    #                 if_construct
+    #                 + [self.indent() + "} else {"]
+    #                 + else_construct
+    #                 + [self.indent() + "}"] )
+    #     else:
+    #         # we have an empty else block, so omit the else portion
+    #         if_construct = (
+    #                 if_construct + [self.indent() + "}"])
+
+    #     return if_construct
+    
+    def _construct_if_statement(self, node):
+        """
+        BORROWED from the ASTToC_Generator process.
+        Generate if statement code, and pass resulting lines of
+        code back up to more general construction method
+        """
+        print(f"if_node.ast = {node.ast}")
+        condition = node.ast.children[0]
+        true_block = node.ast.children[1]
+        print(f"true_block = {true_block}")
+        print(f"true_block.type = {true_block.type}")
+        if true_block.type == "seq":
+            for i, child in enumerate(true_block.children):
+                print(f"    ({i}) {child} ")
+        num_true_stmts = 0
+        if true_block.type == "seq":
+            print(f"    true_block has {len(true_block.children)} items.")
+            num_true_stmts = len(true_block.children)
+        else:
+            print(f"    true_block has 1 item.")
+            num_true_stmts = 1
+
+        else_block = node.ast.children[2]
+        num_else_stmts =  0
+        if else_block.type == "seq":
+            print(f"    else_block has {len(else_block.children)} items.")
+            num_else_stmts = len(else_block.children)
+        else:
+            print(f"    else_block has 1 item.")
+            num_else_stmts = 1
+
+        condition_str = self._construct_expression(condition)
+
+        self.indent_level += 1 # for constructing true/else blocks
+
+        # true_construct = self._construct_statement(true_block)
+        true_block_root = node.succ[0]
+        true_construct = self._construct_statement(true_block_root)
+        if num_true_stmts > 1:
+            _stmts_added = 1
+            next_true_node = true_block_root
+            while _stmts_added < num_true_stmts:
+                next_true_node = next_true_node.succ[0]
+                print(f"Attempting to add node {next_true_node} to true_construct!")
+                true_construct += self._construct_statement(next_true_node)
+                print(f"Added node {next_true_node} to true_construct!")
+                _stmts_added += 1
+
+        else_block_root = node.succ[1]
+        else_construct = self._construct_statement(else_block_root)
+        if num_else_stmts > 1:
+            _stmts_added = 1
+            next_else_node = else_block_root
+            while _stmts_added < num_true_stmts:
+                next_else_node = next_else_node.succ[0]
+                print(f"Attempting to add node {next_else_node} to else_construct!")
+                else_construct += self._construct_statement(next_else_node)
+                print(f"Added node {next_else_node} to else_construct!")
+                _stmts_added += 1
+
+        self.indent_level -= 1 # adjust after leaving true/else blocks
+        if  true_construct == [] and else_construct == []:
+            return []
+        # else we have an if-then-else with at least one non-empty
+        # block, so construct the lines of code and return
+        if_construct = (
+                [self.indent() + "if (" + condition_str + ") {"]
+                + true_construct
+        )
+        if else_construct:
+            # we have a non-empty else block
+            if_construct = (
+                    if_construct
+                    + [self.indent() + "} else {"]
+                    + else_construct
+                    + [self.indent() + "}"] )
+        else:
+            # we have an empty else block, so omit the else portion
+            if_construct = (
+                    if_construct + [self.indent() + "}"])
+
+        return if_construct
+    
+    def _construct_while_statement(self, node):
+        """
+        Construct C code for a WHILE() loop, and pass back up to
+        more general construction method. An empty while() loop is
+        one that has an effectively empty do block, like a sequence
+        of skips, or other operations that themselves evaluate to 
+        being empty.
+        """
+        while_node = node
+        print(f"while_node = {while_node}")
+        # condition = node.ast # changed temporarily while playing with ast stored in CFG
+        condition = node.ast.children[0]
+        body_root = node.succ[0]    # should only be one successor for WHILE
+        self.indent_level += 1 # for constructing while() loop body
+        body_construct = self._construct_statement(body_root)
+        next_node = body_root
+        while while_node not in next_node.succ:
+            print(f"while_node = {while_node}")
+            print(f"Adding node {next_node} to body_construct!")
+            print(f"self.visited_nodes = {self.visited_nodes}")
+            # print()
+            # next_node = next_node.succ[0]
+            if next_node.succ[0].label not in self.visited_nodes:
+                next_node = next_node.succ[0]
+            else:
+                next_node = next_node.succ[1]
+            body_construct += self._construct_statement(next_node)
+        self.indent_level -= 1 # adjust after leaving while() loop body
+        if not body_construct:
+            return []
+        condition_str = self._construct_expression(condition)
+        while_construct = (
+                [self.indent() + "while (" + condition_str + ") {"]
+                + body_construct
+                + [self.indent() + "}"]
+        )
+
+        return while_construct
     
     def _generate_from_cfg(self, cfg_nodes):
         """
@@ -735,4 +1076,20 @@ class CFGToC_Generator:
         else:
             # Unknown type
             raise ValueError("Unknown type")
+    
+    def _df_traversal_list(self, node, traversed_nodes=None):
+        '''
+        Recursively construct a depth-first traversal of the CFG
+        starting at the given node and returning a list of the visited
+        nodes.
+        '''
+        if traversed_nodes is None:
+            traversed_nodes = []
+        if node:
+            traversed_nodes.append(node)
+            for succ in node.succ:
+                if succ not in traversed_nodes:
+                    self._df_traversal_list(succ, traversed_nodes)
+        return traversed_nodes
+        
     
