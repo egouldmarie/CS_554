@@ -1,0 +1,53 @@
+digraph CFG {
+    rankdir=TB;
+    node [shape=box, style=rounded];
+
+    "node_entry" [label="entry\nENTRY", fillcolor=green, style="rounded,filled"];
+    "node_0" [label="0\nisNumFact := 0", fillcolor=white, style="rounded,filled"];
+    "node_1" [label="1\nsum := 0", fillcolor=white, style="rounded,filled"];
+    "node_2" [label="2\nn := 1", fillcolor=white, style="rounded,filled"];
+    "node_3" [label="3\ncount := 0", fillcolor=white, style="rounded,filled"];
+    "node_4" [label="4\ni < goUpToNumber", fillcolor=lightblue, style="rounded,filled"];
+    "node_5" [label="5\nsum <= i", fillcolor=lightblue, style="rounded,filled"];
+    "node_6" [label="6\nsum := sum + n", fillcolor=white, style="rounded,filled"];
+    "node_7" [label="7\nsum = i", fillcolor=lightblue, style="rounded,filled"];
+    "node_8" [label="8\nisNumFact := 1", fillcolor=white, style="rounded,filled"];
+    "node_9" [label="9\nsum := i + 1", fillcolor=white, style="rounded,filled"];
+    "node_10" [label="10\nskip", fillcolor=white, style="rounded,filled"];
+    "node_11" [label="11\nn := n + 1", fillcolor=white, style="rounded,filled"];
+    "node_12" [label="12\nisNumFact = 1", fillcolor=lightblue, style="rounded,filled"];
+    "node_13" [label="13\ncount := count + 1", fillcolor=white, style="rounded,filled"];
+    "node_14" [label="14\nskip", fillcolor=white, style="rounded,filled"];
+    "node_15" [label="15\nisNumFact := 0", fillcolor=white, style="rounded,filled"];
+    "node_16" [label="16\nsum := 0", fillcolor=white, style="rounded,filled"];
+    "node_17" [label="17\nn := 1", fillcolor=white, style="rounded,filled"];
+    "node_18" [label="18\ni := i + 1", fillcolor=white, style="rounded,filled"];
+    "node_19" [label="19\noutput := count", fillcolor=white, style="rounded,filled"];
+    "node_exit" [label="exit\nEXIT", fillcolor=red, style="rounded,filled"];
+
+    "node_entry" -> "node_0";
+    "node_0" -> "node_1";
+    "node_1" -> "node_2";
+    "node_2" -> "node_3";
+    "node_3" -> "node_4";
+    "node_4" -> "node_5"[color="green"];
+    "node_4" -> "node_19"[color="red"];
+    "node_5" -> "node_6"[color="green"];
+    "node_5" -> "node_12"[color="red"];
+    "node_6" -> "node_7";
+    "node_7" -> "node_8"[color="green"];
+    "node_7" -> "node_10"[color="red"];
+    "node_8" -> "node_9";
+    "node_9" -> "node_11";
+    "node_10" -> "node_11";
+    "node_11" -> "node_5";
+    "node_12" -> "node_13"[color="green"];
+    "node_12" -> "node_14"[color="red"];
+    "node_13" -> "node_15";
+    "node_14" -> "node_15";
+    "node_15" -> "node_16";
+    "node_16" -> "node_17";
+    "node_17" -> "node_18";
+    "node_18" -> "node_4";
+    "node_19" -> "node_exit";
+}

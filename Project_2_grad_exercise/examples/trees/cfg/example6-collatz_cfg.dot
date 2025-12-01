@@ -1,0 +1,38 @@
+digraph CFG {
+    rankdir=TB;
+    node [shape=box, style=rounded];
+
+    "node_entry" [label="entry\nENTRY", fillcolor=green, style="rounded,filled"];
+    "node_0" [label="0\nn := input", fillcolor=white, style="rounded,filled"];
+    "node_1" [label="1\nsteps := 0", fillcolor=white, style="rounded,filled"];
+    "node_2" [label="2\nn > 1", fillcolor=lightblue, style="rounded,filled"];
+    "node_3" [label="3\nrem := n", fillcolor=white, style="rounded,filled"];
+    "node_4" [label="4\nquot := 0", fillcolor=white, style="rounded,filled"];
+    "node_5" [label="5\nrem > 1", fillcolor=lightblue, style="rounded,filled"];
+    "node_6" [label="6\nrem := rem – 2", fillcolor=white, style="rounded,filled"];
+    "node_7" [label="7\nquot := quot + 1", fillcolor=white, style="rounded,filled"];
+    "node_8" [label="8\nrem = 0", fillcolor=lightblue, style="rounded,filled"];
+    "node_9" [label="9\nn := quot", fillcolor=white, style="rounded,filled"];
+    "node_10" [label="10\nn := (3 * n) + 1", fillcolor=white, style="rounded,filled"];
+    "node_11" [label="11\nsteps := steps + 1", fillcolor=white, style="rounded,filled"];
+    "node_12" [label="12\noutput := steps", fillcolor=white, style="rounded,filled"];
+    "node_exit" [label="exit\nEXIT", fillcolor=red, style="rounded,filled"];
+
+    "node_entry" -> "node_0";
+    "node_0" -> "node_1";
+    "node_1" -> "node_2";
+    "node_2" -> "node_3"[color="green"];
+    "node_2" -> "node_12"[color="red"];
+    "node_3" -> "node_4";
+    "node_4" -> "node_5";
+    "node_5" -> "node_6"[color="green"];
+    "node_5" -> "node_8"[color="red"];
+    "node_6" -> "node_7";
+    "node_7" -> "node_5";
+    "node_8" -> "node_9"[color="green"];
+    "node_8" -> "node_10"[color="red"];
+    "node_9" -> "node_11";
+    "node_10" -> "node_11";
+    "node_11" -> "node_2";
+    "node_12" -> "node_exit";
+}

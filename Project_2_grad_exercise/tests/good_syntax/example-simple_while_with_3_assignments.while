@@ -1,5 +1,0 @@
-while counter >= 0 do
-  counter := counter - 1;
-  x := counter;
-  y := x
-od

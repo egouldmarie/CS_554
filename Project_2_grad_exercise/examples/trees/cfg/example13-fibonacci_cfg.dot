@@ -1,0 +1,30 @@
+digraph CFG {
+    rankdir=TB;
+    node [shape=box, style=rounded];
+
+    "node_entry" [label="entry\nENTRY", fillcolor=green, style="rounded,filled"];
+    "node_0" [label="0\na := 0", fillcolor=white, style="rounded,filled"];
+    "node_1" [label="1\nb := 1", fillcolor=white, style="rounded,filled"];
+    "node_2" [label="2\nz := 0", fillcolor=white, style="rounded,filled"];
+    "node_3" [label="3\nNOT[n = z]", fillcolor=lightblue, style="rounded,filled"];
+    "node_4" [label="4\nt := a + b", fillcolor=white, style="rounded,filled"];
+    "node_5" [label="5\na := b", fillcolor=white, style="rounded,filled"];
+    "node_6" [label="6\nb := t", fillcolor=white, style="rounded,filled"];
+    "node_7" [label="7\nn := n – 1", fillcolor=white, style="rounded,filled"];
+    "node_8" [label="8\nz := 0", fillcolor=white, style="rounded,filled"];
+    "node_9" [label="9\noutput := a", fillcolor=white, style="rounded,filled"];
+    "node_exit" [label="exit\nEXIT", fillcolor=red, style="rounded,filled"];
+
+    "node_entry" -> "node_0";
+    "node_0" -> "node_1";
+    "node_1" -> "node_2";
+    "node_2" -> "node_3";
+    "node_3" -> "node_4"[color="green"];
+    "node_3" -> "node_9"[color="red"];
+    "node_4" -> "node_5";
+    "node_5" -> "node_6";
+    "node_6" -> "node_7";
+    "node_7" -> "node_8";
+    "node_8" -> "node_3";
+    "node_9" -> "node_exit";
+}

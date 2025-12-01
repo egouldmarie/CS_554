@@ -1,8 +1,0 @@
-x := 1;
-y := 2;
-if y > 0 then
-  skip
-else
-  skip
-fi;
-x := 3
