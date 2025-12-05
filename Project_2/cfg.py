@@ -1,4 +1,4 @@
-class CFG:
+class CFG_Node:
     """
     A CFG node containing the AST node associated with its block of code,
     the type of CFG node it is ("entry", "exit", "condition", or "other"),
@@ -14,145 +14,165 @@ class CFG:
 
         self.succ = []
         self.pred = []
+    
+    def get_all_predecessors(self):
+        def get_preds(predecessor, visited):
+            if predecessor not in visited: 
+                visited.append(predecessor)
+                for pred in predecessor.pred:
+                    get_preds(pred, visited)
+        
+        predecessors = []
+        for pred in self.pred:
+            get_preds(pred, predecessors)
 
-def ast_to_cfg(ast):
+        return predecessors
+    
+    def get_all_successors(self):
+        def get_succs(successor, visited):
+            if successor not in visited: 
+                visited.append(successor)
+                for succ in successor.succ:
+                    get_succs(succ, visited)
+        
+        successors = []
+        for succ in self.succ:
+            get_succs(succ, successors)
+
+        return successors
+
+class CFG:
     """
-    Generate CFG from decorated AST.
+    A class that representing a CFG, generated from a decorated AST.
 
     Args:
         ast: decorated AST root node
-
-    Returns: the entry node of the CFG and the list of all nodes
     """
-    # set up entry and exit nodes
-    entry = CFG(label="entry", ast=ast, type='entry', content='ENTRY')
-    exit = CFG(label="exit", type='exit', content='EXIT')
+    def __init__(self, ast):
+        # list of all nodes
+        self.nodes = []
+        # set up entry and exit nodes
+        self.entry = CFG_Node(label="entry", ast=ast, type='entry', content='ENTRY')
+        self.exit = CFG_Node(label="exit", type='exit', content='EXIT')
 
-    # construct the rest of the CFG
-    all_nodes = []
-    entry.succ.append(node_from_cfg(ast, exit, all_nodes))
+        # construct the rest of the CFG
+        self.entry.succ.append(self.node_from_cfg(ast, self.exit))
 
-    # sort list of all nodes by label
-    all_nodes.sort(key=lambda node: int(node.label))
+        # sort list of all nodes by label
+        self.nodes.sort(key=lambda node: int(node.label))
 
-    # add the entry and exit nodes to the list of all nodes
-    all_nodes.insert(0, entry)
-    all_nodes.append(exit)
+        # add the entry and exit nodes to the list of all nodes
+        self.nodes.insert(0, self.entry)
+        self.nodes.append(self.exit)
 
-    # retroactively add nodes to their successor's predecessors
-    for node in all_nodes:
-        for succ in node.succ:
-            succ.pred.append(node)
+        # retroactively add nodes to their successor's predecessors
+        for node in self.nodes:
+            for succ in node.succ:
+                succ.pred.append(node)
+    
+    def node_from_cfg(self, ast, next_node):
+        """
+            Generates CFG node from the decorated AST.
 
-    return entry, all_nodes
+            Args:
+                ast: the decorated AST node associated with this CFG node
+                next_node: the successor of the CFG node currently being created
+        """
+        if ast.type == "seq":
+            return self.node_from_cfg(ast.children[0], self.node_from_cfg(ast.children[1], next_node))
+        elif ast.type in ["assign", "skip"]:
+            node = CFG_Node(label=ast.l, ast=ast, type="other", content=self.cfg_content_from_ast(ast))
+            self.nodes.append(node)
+            node.succ.append(next_node)
+            return node
+        elif ast.type == "while":
+            node = CFG_Node(label=ast.children[0].l, ast=ast.children[0], type="condition", content=self.cfg_content_from_ast(ast))
+            self.nodes.append(node)
+            node.succ.append(self.node_from_cfg(ast.children[1], node))
+            node.succ.append(next_node)
+            return node
+        elif ast.type == "if":
+            node = CFG_Node(label=ast.children[0].l, ast=ast.children[0], type="condition", content=self.cfg_content_from_ast(ast))
+            self.nodes.append(node)
+            node.succ.append(self.node_from_cfg(ast.children[1], next_node))
+            node.succ.append(self.node_from_cfg(ast.children[2], next_node))
+            return node
 
-def node_from_cfg(ast, next_node, all_nodes):
-    """
-        Generates CFG node from the decorated AST.
+    def cfg_content_from_ast(self, ast):
+        """
+        Generate string representation of .while code from AST node
 
         Args:
-            ast: the decorated AST node associated with this CFG node
-            next_node: the successor of the CFG node currently being created
-            all_nodes: array of all CFG nodes to append newly generated nodes to
-    """
+            ast: AST node
 
-    if ast.type == "seq":
-        return node_from_cfg(ast.children[0], node_from_cfg(ast.children[1], next_node, all_nodes), all_nodes)
-    elif ast.type in ["assign", "skip"]:
-        node = CFG(label=ast.l, ast=ast, type="other", content=cfg_content_from_ast(ast))
-        all_nodes.append(node)
-        node.succ.append(next_node)
-        return node
-    elif ast.type == "while":
-        node = CFG(label=ast.children[0].l, ast=ast.children[0], type="condition", content=cfg_content_from_ast(ast))
-        all_nodes.append(node)
-        node.succ.append(node_from_cfg(ast.children[1], node, all_nodes))
-        node.succ.append(next_node)
-        return node
-    elif ast.type == "if":
-        node = CFG(label=ast.children[0].l, ast=ast.children[0], type="condition", content=cfg_content_from_ast(ast))
-        all_nodes.append(node)
-        node.succ.append(node_from_cfg(ast.children[1], next_node, all_nodes))
-        node.succ.append(node_from_cfg(ast.children[2], next_node, all_nodes))
-        return node
-
-def cfg_content_from_ast(ast):
-    """
-    Generate string representation of .while code from AST node
-
-    Args:
-        ast: AST node
-
-    Returns: string
-    """
-    ops = ["=", "<", ">", "<=", ">=", "and", "add", "sub", "mult", "or", "assign"]
-    if ast.type in ["int", "var", "true", "false", "skip"]:
-        return f"{ast.value}"
-    elif ast.type in ops:
-        left = ""
-        if ast.children[0].type in ops and ast.type is not "assign":
-            left = f"({cfg_content_from_ast(ast.children[0])})"
-        else:
-            left = f"{cfg_content_from_ast(ast.children[0])}"
-        right = ""
-        if ast.children[1].type in ops and ast.type is not "assign":
-            right = f"({cfg_content_from_ast(ast.children[1])})"
-        else:
-            right = f"{cfg_content_from_ast(ast.children[1])}"
-        return f"{left} {ast.value} {right}"
-    elif ast.type == "not":
-        return f"NOT[{cfg_content_from_ast(ast.children[0])}]"
-    elif ast.type in ["if", "while"]:
-        return f"{ast.type} {cfg_content_from_ast(ast.children[0])}"
-
-def generate_cfg_dot(nodes, filename="cfg.dot"):
-    """
-    Generate a Graphviz DOT file for visualizing the Control Flow Graph.
-    
-    Args:
-        nodes: list of Control Flow Graph nodes
-        filename: Output filename for the DOT file
-    """
-    dot_content = ["digraph CFG {"]
-    dot_content.append("    rankdir=TB;")  # Top to bottom layout
-    dot_content.append("    node [shape=box, style=rounded];")
-    dot_content.append("")
-    
-    # Add all nodes
-    for node in nodes:
-        label_str = f"{node.label}\\n{node.content}"
-        
-        # Color code by node type
-        if node.type == 'entry':
-            color = "green"
-        elif node.type == 'exit':
-            color = "red"
-        elif node.type == 'condition':
-            color = "lightblue"
-        else:
-            color = "white"
-        
-        node_id = f"node_{node.label}"
-        dot_content.append(f'    "{node_id}" [label="{label_str}", fillcolor={color}, style="rounded,filled"];')
-    
-    dot_content.append("")
-    
-    # Add all edges
-    for node in nodes:
-        node_id = f"node_{node.label}"
-        for s in range(len(node.succ)):
-            suc = node.succ[s]
-            succ_id = f"node_{suc.label}"
-            if len(node.succ) > 1:
-                dot_content.append(f'    "{node_id}" -> "{succ_id}"[color="{"green" if s==0 else "red"}"];')
+        Returns: string
+        """
+        ops = ["=", "<", ">", "<=", ">=", "and", "add", "sub", "mult", "or", "assign"]
+        if ast.type in ["int", "var", "true", "false", "skip"]:
+            return f"{ast.value}"
+        elif ast.type in ops:
+            left = ""
+            if ast.children[0].type in ops and ast.type is not "assign":
+                left = f"({self.cfg_content_from_ast(ast.children[0])})"
             else:
-                dot_content.append(f'    "{node_id}" -> "{succ_id}";')
-    
-    dot_content.append("}")
-    
-    # Write to file
-    with open(filename, "w") as f:
-        f.write("\n".join(dot_content))
-    
-    print(f"CFG DOT file '{filename}' generated successfully!")
-    print(f"CFG contains {len(nodes)} nodes.")
+                left = f"{self.cfg_content_from_ast(ast.children[0])}"
+            right = ""
+            if ast.children[1].type in ops and ast.type is not "assign":
+                right = f"({self.cfg_content_from_ast(ast.children[1])})"
+            else:
+                right = f"{self.cfg_content_from_ast(ast.children[1])}"
+            return f"{left} {ast.value} {right}"
+        elif ast.type == "not":
+            return f"NOT[{self.cfg_content_from_ast(ast.children[0])}]"
+        elif ast.type in ["if", "while"]:
+            return f"{ast.type} {self.cfg_content_from_ast(ast.children[0])}"
+
+    def generate_cfg_dot(self, filename="cfg.dot"):
+        """
+        Generate a Graphviz DOT file for visualizing the Control Flow Graph.
+        
+        Args:
+            filename: Output filename for the DOT file
+        """
+        dot_content = ["digraph CFG {"]
+        dot_content.append("    rankdir=TB;")  # Top to bottom layout
+        dot_content.append("    node [shape=box, style=rounded];")
+        dot_content.append("")
+        
+        # Add all nodes
+        for node in self.nodes:
+            label_str = f"{node.label}\\n{node.content}"
+            
+            # Color code by node type
+            if node.type == 'entry':
+                color = "green"
+            elif node.type == 'exit':
+                color = "red"
+            elif node.type == 'condition':
+                color = "lightblue"
+            else:
+                color = "white"
+            
+            node_id = f"node_{node.label}"
+            dot_content.append(f'    "{node_id}" [label="{label_str}", fillcolor={color}, style="rounded,filled"];')
+        
+        dot_content.append("")
+        
+        # Add all edges
+        for node in self.nodes:
+            node_id = f"node_{node.label}"
+            for s in range(len(node.succ)):
+                suc = node.succ[s]
+                succ_id = f"node_{suc.label}"
+                if len(node.succ) > 1:
+                    dot_content.append(f'    "{node_id}" -> "{succ_id}"[color="{"green" if s==0 else "red"}"];')
+                else:
+                    dot_content.append(f'    "{node_id}" -> "{succ_id}";')
+        
+        dot_content.append("}")
+        
+        # Write to file
+        with open(filename, "w") as f:
+            f.write("\n".join(dot_content))
+        
+        print(f"CFG DOT file '{filename}' generated successfully!")

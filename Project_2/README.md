@@ -10,6 +10,9 @@ Project 2 - Release 2 (v2.2)
 - [x] **Code Generation:** implemented in this release
 - [x] **Testing:** completed
 - [x] **Performance Evaluation:** completed
+- [ ] **Liveness Analysis Equations:**
+- [ ] **Solve LA Equations:**
+- [ ] **Apply Results of LA to remove dead code:**
 
 ## Included in TAR file:
 1. Compiler Code (found in `code/`)

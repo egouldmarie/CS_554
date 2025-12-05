@@ -18,66 +18,72 @@ example6_collatz:
     # s6<-steps
     ld s6, 40(a0)
 
+label_entry:
+    # ENTRY
 label_0:
-    # Label 0: n := input
+    # n := input
     mv s2, s1
 label_1:
-    # Label 1: steps := 0
+    # steps := 0
     li t0, 0
     mv s6, t0
 label_2:
-    # Label 2: while: n > 1
+    # while n > 1
     li t1, 1
     slt t0, t1, s2
     beqz t0, label_12
 label_3:
-    # Label 3: rem := n
+    # rem := n
     mv s5, s2
 label_4:
-    # Label 4: quot := 0
+    # quot := 0
     li t0, 0
     mv s4, t0
 label_5:
-    # Label 5: while: rem > 1
+    # while rem > 1
     li t1, 1
     slt t0, t1, s5
     beqz t0, label_8
 label_6:
-    # Label 6: rem := rem – 2
+    # rem := rem – 2
     li t1, 2
     sub t0, s5, t1
     mv s5, t0
 label_7:
-    # Label 7: quot := quot + 1
+    # quot := quot + 1
     li t1, 1
     add t0, s4, t1
     mv s4, t0
     j label_5
 label_8:
-    # Label 8: if: rem = 0
+    # if rem = 0
     li t1, 0
     sub t0, s5, t1
     seqz t0, t0
     beqz t0, label_10
 label_9:
-    # Label 9: n := quot
+    # n := quot
     mv s2, s4
-label_11:
-    # Label 11: steps := steps + 1
-    li t1, 1
-    add t0, s6, t1
-    mv s6, t0
-    j label_2
+    j label_11
 label_10:
-    # Label 10: n := 3 * n + 1
+    # n := (3 * n) + 1
     li t0, 3
     mul t0, t0, s2
     li t1, 1
     add t0, t0, t1
     mv s2, t0
+label_11:
+    # steps := steps + 1
+    li t1, 1
+    add t0, s6, t1
+    mv s6, t0
+    j label_2
 label_12:
-    # Label 12: output := steps
+    # output := steps
     mv s3, s6
+label_exit:
+    # EXIT
+
     # Function epilogue
     # Deallocate stack
     addi sp, sp, 0

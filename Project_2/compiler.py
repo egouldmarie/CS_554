@@ -18,7 +18,8 @@ from parser import Parser
 from scanner import Tokenize
 from codegen import RISC_V_CodeGenerator
 from trees import decorate_ast, insert_labels, generate_dot_from_tree
-from cfg import ast_to_cfg, generate_cfg_dot
+from cfg import CFG
+from optimizer import Optimizer
 
 if __name__ == "__main__":
 
@@ -134,17 +135,26 @@ if __name__ == "__main__":
     # ======================================== #
     print("\nGenerating Control Flow Graph (CFG)...")
     print("-" * 70)
-    cfg, nodes = ast_to_cfg(ast)
-    generate_cfg_dot(nodes, filename=cfg_file)
+    cfg = CFG(ast)
+    cfg.generate_cfg_dot(filename=cfg_file)
     print("-" * 70)
     print()
+
+    # ======================================== #
+    # Create and run optimizer                 #
+    # (Live Variable Analysis)                 #
+    # ======================================== #
+    print("\nLive Analysis Equations:")
+    print("-" * 70)
+    optimizer = Optimizer(cfg)
+    print("-" * 70)
 
     # ======================================== #
     # Generate, display, and save to .s file   #
     # the RISC-V assembly code                 #
     # ======================================== #
     codegen = RISC_V_CodeGenerator(function_name)
-    assembly = codegen.generate(nodes)  # Generate from CFG instead of AST
+    assembly = codegen.generate(cfg.nodes)  # Generate from CFG instead of AST
     print("\nRISC-V Assembly Code:")
     print("-" * 70)
     print(assembly)
