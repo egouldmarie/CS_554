@@ -5,28 +5,37 @@ class Optimizer:
         self.cfg = cfg
         self.IN = {}
         self.OUT = {}
+        self.changed = {}
 
         for node in cfg.nodes:
-            self.LVA_in(node)
-            self.LVA_out(node)
+            self.IN[node.label] = set()
+            self.OUT[node.label] = set()
+
+        changed = True
+        while changed:
+            changed = False
+            for n in range(len(cfg.nodes)-1, -1, -1):
+                node = cfg.nodes[n]
+                old_out = self.OUT[node.label]
+                old_in = self.IN[node.label]
+                self.LVA_out(node)
+                self.LVA_in(node)
+                if old_out != self.OUT[node.label] or old_in != self.IN[node.label]:
+                    changed = True
+        
+        for node in cfg.nodes:
             print(f"label_{node.label}: {node.content}")
             print(f"LV_in:  {self.IN[node.label]}")
             print(f"LV_out: {self.OUT[node.label]}")
             print("")
 
     def LVA_out(self, cfg_node):
-        if self.OUT.get(cfg_node.label) is None:
-            self.OUT[cfg_node.label] = set()
-            if cfg_node.label is not "exit":
-                for succ in cfg_node.succ:
-                    self.OUT[cfg_node.label] = self.OUT[cfg_node.label].union(self.LVA_in(succ))
-        return self.OUT[cfg_node.label]
+        if cfg_node.label is not "exit":
+            for succ in cfg_node.succ:
+                self.OUT[cfg_node.label] = self.OUT[cfg_node.label].union(self.IN[succ.label])
 
     def LVA_in(self, cfg_node):
-        if self.IN.get(cfg_node.label) is None:
-            gen = self.gen(cfg_node)
-            self.IN[cfg_node.label] = gen.union(self.LVA_out(cfg_node).difference(self.kill(cfg_node)))
-        return self.IN[cfg_node.label]
+        self.IN[cfg_node.label] = self.gen(cfg_node).union(self.OUT[cfg_node.label].difference(self.kill(cfg_node)))
 
     def kill(self, cfg_node):
         kill = set()
