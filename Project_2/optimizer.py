@@ -1,5 +1,3 @@
-import re
-
 class Optimizer:
     def __init__(self, cfg):
         self.cfg = cfg
@@ -11,6 +9,7 @@ class Optimizer:
             self.IN[node.label] = set()
             self.OUT[node.label] = set()
 
+        iteration = 0
         changed = True
         while changed:
             changed = False
@@ -22,7 +21,9 @@ class Optimizer:
                 self.LVA_in(node)
                 if old_out != self.OUT[node.label] or old_in != self.IN[node.label]:
                     changed = True
+            iteration = iteration + 1
         
+        print(f"Live variable analysis completed in {iteration} iteration(s).\n")
         for node in cfg.nodes:
             print(f"label_{node.label}: {node.content}")
             print(f"LV_in:  {self.IN[node.label]}")
