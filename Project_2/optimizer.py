@@ -1,37 +1,41 @@
+import re
+
 class Optimizer:
     def __init__(self, cfg):
         self.cfg = cfg
+        self.IN = {}
+        self.OUT = {}
 
         for node in cfg.nodes:
-            kill = []
-            gen = []
-            if node.type is not "exit":
-                kill = self.kill(node)
-                gen = self.gen(node)
-
+            self.LVA_in(node)
+            self.LVA_out(node)
             print(f"label_{node.label}: {node.content}")
-            print(f"kill_{node.label}:  {kill}")
-            print(f"gen_{node.label}:   {gen}")
+            print(f"LV_in:  {self.IN[node.label]}")
+            print(f"LV_out: {self.OUT[node.label]}")
             print("")
 
-    def LVA(self, cfg_node):
-        LVout = self.LVout(cfg_node)
-        LVin = self.LVin(cfg_node, LVout)
+    def LVA_out(self, cfg_node):
+        if self.OUT.get(cfg_node.label) is None:
+            self.OUT[cfg_node.label] = set()
+            if cfg_node.label is not "exit":
+                for succ in cfg_node.succ:
+                    self.OUT[cfg_node.label] = self.OUT[cfg_node.label].union(self.LVA_in(succ))
+        return self.OUT[cfg_node.label]
 
-    def LVin(self, cfg_node, LVout):
-        return []
-    
-    def LVout(self, cfg_node):
-        return []
-    
+    def LVA_in(self, cfg_node):
+        if self.IN.get(cfg_node.label) is None:
+            gen = self.gen(cfg_node)
+            self.IN[cfg_node.label] = gen.union(self.LVA_out(cfg_node).difference(self.kill(cfg_node)))
+        return self.IN[cfg_node.label]
+
     def kill(self, cfg_node):
-        kill = []
-        if cfg_node.ast.type == "assign":
-            kill.append(cfg_node.ast.children[0].value)
+        kill = set()
+        if cfg_node.ast and cfg_node.ast.type == "assign":
+            kill.add(cfg_node.ast.children[0].value)
         return kill
 
     def gen(self, cfg_node):
-        gen = []
+        gen = set()
         ops = ["=", "<", ">", "<=", ">=", "and", "add", "sub", "mult", "or"]
         def get_gen_var(ast, gen):
             if ast.type == "assign":
@@ -42,8 +46,9 @@ class Optimizer:
                 get_gen_var(ast.children[0], gen)
                 get_gen_var(ast.children[1], gen)
             elif ast.type == "var":
-                if ast.value not in gen: gen.append(ast.value)
+                gen.add(ast.value)
         
-        get_gen_var(cfg_node.ast, gen)
+        if cfg_node.ast:
+            get_gen_var(cfg_node.ast, gen)
         return gen
     
