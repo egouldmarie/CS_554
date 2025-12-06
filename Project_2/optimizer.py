@@ -56,8 +56,10 @@ class Optimizer:
         print("Results:\n")
         for node in cfg.nodes:
             print(f"label_{node.label}: {node.content}")
-            print(f"LV_in({node.label})  = {self.IN[node.label]}")
-            print(f"LV_out({node.label}) = {self.OUT[node.label]}")
+            _in = self.IN[node.label] if len(self.IN[node.label]) > 0 else "∅"
+            _out = self.OUT[node.label] if len(self.OUT[node.label]) > 0 else "∅"
+            print(f"LV_in({node.label})  = {_in}")
+            print(f"LV_out({node.label}) = {_out}")
             print("")
 
     def LVA_out(self, cfg_node):
