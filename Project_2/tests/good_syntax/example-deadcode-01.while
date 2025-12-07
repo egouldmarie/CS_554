@@ -1,0 +1,35 @@
+{-
+  program with several pieces of deadcode
+-}
+n := input;
+steps := 0;
+-- loop containing a meaningless (dead code) assignment
+while n > 1 do
+  n := n - 1;
+  steps := steps + 1;
+  k := 3  -- dead code
+od;
+-- if-then-else with a meaningless (dead code) assignment
+if steps > 40 then
+  k := 5; -- dead code
+  steps := 40
+else
+  steps := steps - 1
+fi;
+-- meaningless loop (entire loop is dead code)
+while m > 3 do
+  m := m - 1
+od;
+-- meaningless if (entire if-then-else is dead code)
+if j < 10 then
+  m := 1
+else
+  m := 0
+fi;
+-- if with empty else
+if steps > 20 then
+  steps := 20
+else
+  skip
+fi;
+output := steps
