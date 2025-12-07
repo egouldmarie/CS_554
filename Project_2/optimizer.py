@@ -63,7 +63,7 @@ class Optimizer:
             print("")
 
     def LVA_out(self, cfg_node):
-        if cfg_node.label is not "exit":
+        if cfg_node.label != "exit":
             for succ in cfg_node.succ:
                 self.OUT[cfg_node.label] = self.OUT[cfg_node.label].union(self.IN[succ.label])
 
