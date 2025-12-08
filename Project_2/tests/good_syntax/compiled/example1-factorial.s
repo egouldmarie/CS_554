@@ -27,7 +27,7 @@ label_2:
     # while y > 1
     li t1, 1
     slt t0, t1, s3
-    beqz t0, label_5
+    beqz t0, label_6
 label_3:
     # z := z * y
     mul t0, s4, s3
@@ -38,10 +38,6 @@ label_4:
     sub t0, s3, t1
     mv s3, t0
     j label_2
-label_5:
-    # y := 0
-    li t0, 0
-    mv s3, t0
 label_6:
     # output := z
     mv s1, s4

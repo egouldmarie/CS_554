@@ -1,5 +1,7 @@
 {-
-Computes the factorial of the number stored in x and leaves the result in z:
+Computes the factorial of
+the number stored in x and
+leaves the result in z:
 -}
 
 y := x {- LABEL 0 -};

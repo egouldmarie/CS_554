@@ -6,9 +6,9 @@ extern void example1_factorial(int64_t *var_arr);
 int main(int argc, char *argv[]) {
 
     // Check if correct num of args provided
-    if(argc != 5) {
-        printf("Executable requires 4 arguments.\n");
-        printf("Usage: <filename> output x y z\n");
+    if(argc != 2) {
+        printf("Executable requires 1 argument(s).\n");
+        printf("Usage: <filename> x\n");
         return EXIT_FAILURE;
     }
 
@@ -16,9 +16,10 @@ int main(int argc, char *argv[]) {
     int64_t var_array[4];
 
     // Initialize the values
-    for (int i = 0; i < 4; i++) {
-        var_array[i] = atoll(argv[i + 1]);
-    }
+    var_array[0] = 0;
+    var_array[1] = atoll(argv[1]);
+    var_array[2] = 0;
+    var_array[3] = 0;
 
     // Print initialized array values to verify:
     printf("\n");
