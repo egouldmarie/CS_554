@@ -176,3 +176,30 @@ class CFG:
             f.write("\n".join(dot_content))
         
         print(f"CFG DOT file '{filename}' generated successfully!")
+    
+    def remove_node(self, node):
+        """"""
+        preds = node.pred
+        succs = node.succ
+
+        self.nodes.remove(node)
+
+        trim = set()
+        for succ in succs:
+            succ.pred.remove(node)
+            for pred in preds:
+                pred.succ.remove(node)
+                if pred != succ:
+                    if pred not in succ.pred:
+                        succ.pred.append(pred)
+                        pred.succ.append(succ)
+                    else:
+                        # unnecessary if branch
+                        trim.add(pred)
+                else:
+                    # eliminated the content of a while loop
+                    trim.add(pred)
+        
+        for node in trim:
+            self.remove_node(node)
+    

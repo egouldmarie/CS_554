@@ -50,6 +50,7 @@ if __name__ == "__main__":
     parse_file = tree_path+file_name+"_parse_tree.dot"
     decorated_ast_file = decorated_tree_path+file_name+"_ast_tree.dot"
     cfg_file = cfg_path+file_name+"_cfg.dot"
+    cfg_optimized_file = cfg_path+file_name+"_optimized_cfg.dot"
 
     labeled_path = args.filename[:idx] + "labeled/"
     os.makedirs(os.path.dirname(labeled_path), exist_ok=True)
@@ -148,6 +149,8 @@ if __name__ == "__main__":
     print("-" * 70)
     optimizer = Optimizer(cfg)
     print("-" * 70)
+
+    cfg.generate_cfg_dot(filename=cfg_optimized_file)
 
     # ======================================== #
     # Generate, display, and save to .s file   #
