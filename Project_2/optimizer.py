@@ -130,8 +130,11 @@ class Optimizer:
                     if var not in self.OUT[node.label]:
                         dead.add(f"label_{node.label}: {node.content}")
                         self.cfg.remove_node(node)
+                elif node.ast.type == "skip":
+                    dead.add(f"label_{node.label}: {node.content}")
+                    self.cfg.remove_node(node)
         print(f"Number of nodes after: {len(self.cfg.nodes)}")
-        print(f"Dead Assignments: {dead}")
+        print(f"Dead Nodes: {dead}")
         #
     
     def create_inference_graph(self):
