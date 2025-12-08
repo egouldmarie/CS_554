@@ -70,7 +70,7 @@ class Optimizer:
             print(f"label_{node.label}: {node.content}")
             print(f"LV_in({node.label})  = {gen} ∪ (LV_out({node.label}) / {kill})")
             if node.label == "exit":
-                lv_out = f"LV_out({node.label}) = ∅"
+                lv_out = f"LV_out({node.label}) = "+"{'output'}"
             else:
                 lv_out = f"LV_out({node.label}) ="
             for s in range(len(node.succ)):
@@ -94,11 +94,12 @@ class Optimizer:
                     changed = True
             iteration = iteration + 1
         
-        # Eliminate dead code using Live Variable sets
-        self.eliminate_dead_code()
-        
         # Print Live Variable In and Out sets for each node in the CFG
         print(f"Live variable analysis completed in {iteration} iteration(s).")
+
+        # Eliminate dead code using Live Variable sets
+        self.eliminate_dead_code()
+
         print("Results:\n")
         for node in self.cfg.nodes:
             print(f"label_{node.label}: {node.content}")
@@ -169,7 +170,7 @@ class Optimizer:
                     dead.add(f"label_{node.label}: {node.content}")
                     self.cfg.remove_node(node)
         print(f"Number of nodes after: {len(self.cfg.nodes)}")
-        print(f"Dead Nodes: {dead}")
+        print(f"Dead Nodes: {dead}\n")
     
     def create_inference_graph(self):
         """
