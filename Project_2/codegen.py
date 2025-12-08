@@ -34,7 +34,7 @@ class RISC_V_CodeGenerator:
         """
         self.code.append(instruction)
     
-    def generate(self, nodes) -> str:
+    def generate(self, nodes, optimizer) -> str:
         """
         Main code generation function - generates code from CFG
         
@@ -44,8 +44,8 @@ class RISC_V_CodeGenerator:
         Returns:
             String containing RISC-V assembly code
         """
-        # Collect variables from CFG nodes
-        self._collect_variables_from_cfg(nodes)
+        # Collect variables from Optimizer
+        self._collect_variables_from_optimizer(optimizer)
         
         # Generate code from CFG nodes
         self._generate_from_cfg(nodes)
@@ -60,27 +60,19 @@ class RISC_V_CodeGenerator:
         
         return "\n".join(self.code)
     
-    def _collect_variables_from_cfg(self, nodes):
+    def _collect_variables_from_optimizer(self, optimizer):
         """
-        Collect all variables from CFG nodes
+        Collect all variables from interference graph in optimizer
         """
-        self.variables = []
-        self._collect_vars_from_ast_node(nodes[0].ast)
+        self.variables = [var for var in optimizer.interference_graph.nodes]
         self.variables = sorted(self.variables)
         
         # Map variables to s registers (s1, s2, s3, ...)
         for i, var in enumerate(self.variables):
-            self.var_map[var] = f"s{i+1}"
-    
-    def _collect_vars_from_ast_node(self, node):
-        """
-        Recursively collect variables from an AST node
-        """        
-        if node.type == "var" and node.value not in self.variables:
-            self.variables.append(node.value)
-        elif hasattr(node, 'children'):
-            for child in node.children:
-                self._collect_vars_from_ast_node(child)
+            if i <= 10:
+                self.var_map[var] = f"s{i+1}"
+            else:
+                self.var_map[var] = f"{i*8}(a0)"
     
     def _emit_function_prologue(self):
         """
@@ -98,10 +90,11 @@ class RISC_V_CodeGenerator:
         
         # Load each variable into its corresponding s register
         for i, var in enumerate(self.variables):
-            offset = i * 8  # offset = index * 8 (first variable at offset 0)
-            s_reg = self.var_map[var]
-            self.prologue.append(f"    # {s_reg}<-{var}")
-            self.prologue.append(f"    ld {s_reg}, {offset}(a0)")
+            if i<=10:
+                offset = i * 8  # offset = index * 8 (first variable at offset 0)
+                s_reg = self.var_map[var]
+                self.prologue.append(f"    # {s_reg}<-{var}")
+                self.prologue.append(f"    ld {s_reg}, {offset}(a0)")
         
         self.prologue.append("")
     
@@ -118,10 +111,11 @@ class RISC_V_CodeGenerator:
 
         # Save each variable from its s register back to memory
         for i, var in enumerate(self.variables):
-            offset = i * 8  # offset = index * 8
-            s_reg = self.var_map[var]
-            self.epilogue.append(f"    # {var}<-{s_reg}")
-            self.epilogue.append(f"    sd {s_reg}, {offset}(a0)")
+            if i<=10:
+                offset = i * 8  # offset = index * 8
+                s_reg = self.var_map[var]
+                self.epilogue.append(f"    # {var}<-{s_reg}")
+                self.epilogue.append(f"    sd {s_reg}, {offset}(a0)")
         
         self.epilogue.append("    ret")
     
@@ -166,7 +160,11 @@ class RISC_V_CodeGenerator:
             
             # Move result to variable's s register
             if result_reg != var_reg:
-                self.gen(f"    mv {var_reg}, {result_reg}")
+                if var_reg[-1] == ")":
+                    # spillage
+                    self.gen(f"    sd {result_reg}, {var_reg}")
+                else:
+                    self.gen(f"    mv {var_reg}, {result_reg}")
         else:
             self._generate_expression(ast)
 
@@ -190,7 +188,13 @@ class RISC_V_CodeGenerator:
         elif node.type == "var":
             # Variable - get its s register
             var_name = node.value
-            return self.var_map[var_name]
+            var_reg = self.var_map[var_name]
+            if var_reg[-1] == ")":
+                # variable is in address space, not s-register
+                self.gen(f"    ld {result_reg}, {var_reg}")
+                return result_reg
+            else:
+                return var_reg
         elif node.type in ["true", "false"]:
             # Boolean constant
             if node.type == "true":

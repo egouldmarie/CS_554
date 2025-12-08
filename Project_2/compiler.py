@@ -157,7 +157,7 @@ if __name__ == "__main__":
     # the RISC-V assembly code                 #
     # ======================================== #
     codegen = RISC_V_CodeGenerator(function_name)
-    assembly = codegen.generate(cfg.nodes)  # Generate from CFG instead of AST
+    assembly = codegen.generate(cfg.nodes, optimizer)  # Generate from CFG instead of AST
     print("\nRISC-V Assembly Code:")
     print("-" * 70)
     print(assembly)
@@ -173,14 +173,25 @@ if __name__ == "__main__":
     # ======================================== #
 
     # First, some helpful details and sub-strings
+    live_vars = optimizer.IN["entry"]
+    num_live_vars = len(live_vars)
     num_vars = len(codegen.variables)
-    printVars = " ".join(codegen.variables)
+    printVars = " ".join(live_vars)
     printVals = ""
     for i in range(num_vars):
         printVals += (
                 f"    printf(\"{codegen.variables[i]} = %lld \\n\", "
                 f"(long long)var_array[{i}]);\n"
         )
+
+    count = 1
+    assignVals = ""
+    for i in range(num_vars):
+        if codegen.variables[i] in live_vars:
+            assignVals += f"    var_array[{i}] = atoll(argv[{count}]);\n"
+            count += 1
+        else:
+            assignVals += f"    var_array[{i}] = 0;\n"
 
     # Construct the C code as a Python string (to be printed to a file)
     c_code = (
@@ -192,8 +203,8 @@ if __name__ == "__main__":
           +  "int main(int argc, char *argv[]) {\n"
           +  "\n"
           +  "    // Check if correct num of args provided\n"
-          + f"    if(argc != {num_vars + 1}) " + "{\n"
-          + f'        printf("Executable requires {num_vars} arguments.\\n");\n'
+          + f"    if(argc != {num_live_vars + 1}) " + "{\n"
+          + f'        printf("Executable requires {num_live_vars} argument(s).\\n");\n'
           + f'        printf("Usage: <filename> {printVars}\\n");\n'
           +  "        return EXIT_FAILURE;\n"
           +  "    }\n"
@@ -202,9 +213,7 @@ if __name__ == "__main__":
           + f"    int64_t var_array[{num_vars}];\n"
           +  "\n"
           +  "    // Initialize the values\n"
-          + f"    for (int i = 0; i < {num_vars}; i++) " + "{\n"
-          +  "        var_array[i] = atoll(argv[i + 1]);\n"
-          +  "    }\n"
+          + assignVals
           +  "\n"
           +  "    // Print initialized array values to verify:\n"
           +  '    printf("\\n");\n'

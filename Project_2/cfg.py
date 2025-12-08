@@ -112,12 +112,12 @@ class CFG:
             return f"{ast.value}"
         elif ast.type in ops:
             left = ""
-            if ast.children[0].type in ops and ast.type is not "assign":
+            if ast.children[0].type in ops and ast.type != "assign":
                 left = f"({self.cfg_content_from_ast(ast.children[0])})"
             else:
                 left = f"{self.cfg_content_from_ast(ast.children[0])}"
             right = ""
-            if ast.children[1].type in ops and ast.type is not "assign":
+            if ast.children[1].type in ops and ast.type != "assign":
                 right = f"({self.cfg_content_from_ast(ast.children[1])})"
             else:
                 right = f"{self.cfg_content_from_ast(ast.children[1])}"
