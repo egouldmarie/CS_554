@@ -40,43 +40,115 @@ class RISC_V_CodeGenerator:
         
         Args:
             nodes: list of control flow graph nodes
+            optimizer: Optimizer instance with liveness analysis results
             
         Returns:
             String containing RISC-V assembly code
         """
+        # Store optimizer for later use
+        self.optimizer = optimizer
+        
         # Collect variables from Optimizer
         self._collect_variables_from_optimizer(optimizer)
         
         # Generate code from CFG nodes
         self._generate_from_cfg(nodes)
         
-        # Generate function prologue (load variables into s registers)
+        # Generate function prologue (load entry-live variables into s registers)
         self._emit_function_prologue()
-
-        # Generate function epilogue (save s registers back to memory)
+        
+        # Generate function epilogue (save exit-live variables back to memory)
         self._emit_function_epilogue()
-
+        
         self.code = self.prologue + self.code + self.epilogue
         
         return "\n".join(self.code)
     
     def _collect_variables_from_optimizer(self, optimizer):
         """
-        Collect all variables from interference graph in optimizer
+        Collect variables using Live Variable Analysis and Interference Graph coloring.
+        Prioritizes entry-live variables and uses graph coloring for register allocation.
         """
-        self.variables = [var for var in optimizer.interference_graph.nodes]
-        self.variables = sorted(self.variables)
+        # Get entry-live variables (variables that are live at function entry)
+        entry_live_vars = optimizer.IN.get("entry", set())
         
-        # Map variables to s registers (s1, s2, s3, ...)
-        for i, var in enumerate(self.variables):
-            if i <= 10:
-                self.var_map[var] = f"s{i+1}"
+        # Get interference graph coloring
+        coloring = optimizer.interference_graph.coloring
+        
+        # Get all variables from interference graph (all variables that appear in the program)
+        all_vars = list(optimizer.interference_graph.nodes)
+        
+        # Calculate number of colors needed
+        num_colors = len(set(coloring.values()))
+        MAX_REGISTERS = 11  # s1-s11
+        
+        # Separate variables into entry-live and others
+        entry_vars = [var for var in all_vars if var in entry_live_vars]
+        other_vars = [var for var in all_vars if var not in entry_live_vars]
+        
+        # Sort for consistent ordering
+        entry_vars = sorted(entry_vars)
+        other_vars = sorted(other_vars)
+        
+        # Priority: entry-live variables first, then others
+        # This ensures we allocate registers to the most important variables
+        self.variables = entry_vars + other_vars
+        
+        # Map variables to registers using interference graph coloring
+        # Variables with the same color can share a register (they don't interfere)
+        color_to_register = {}  # Maps color -> register name
+        register_count = 0
+        
+        # Assign registers based on coloring
+        # Priority: colors used by entry-live variables get registers first
+        entry_colors = set()
+        for var in entry_vars:
+            if var in coloring:
+                entry_colors.add(coloring[var])
+        
+        # First pass: assign registers to colors (prioritizing entry-live variable colors)
+        all_colors = set(coloring.values())
+        # Sort colors: entry-live colors first, then others
+        sorted_colors = sorted(entry_colors) + sorted(all_colors - entry_colors)
+        
+        for color in sorted_colors:
+            if register_count < MAX_REGISTERS:
+                # Assign to s register
+                color_to_register[color] = f"s{register_count + 1}"
+                register_count += 1
+        
+        # Second pass: map each variable to its register or memory location
+        for var in self.variables:
+            if var in coloring:
+                color = coloring[var]
+                if color in color_to_register:
+                    # Variable gets a register (shared with other variables of same color)
+                    self.var_map[var] = color_to_register[color]
+                else:
+                    # Variable is spilled to memory - use its position in variable array
+                    var_index = self.variables.index(var)
+                    self.var_map[var] = f"{var_index * 8}(a0)"
             else:
-                self.var_map[var] = f"{i*8}(a0)"
+                # Variable not in coloring (shouldn't happen, but handle it)
+                var_index = self.variables.index(var)
+                if var_index < MAX_REGISTERS:
+                    self.var_map[var] = f"s{var_index + 1}"
+                else:
+                    self.var_map[var] = f"{var_index * 8}(a0)"
+        
+        # Store information about which variables are in registers vs memory
+        self.vars_in_registers = [var for var in self.variables 
+                                  if var in self.var_map and not self.var_map[var].endswith("(a0)")]
+        self.vars_in_memory = [var for var in self.variables 
+                              if var in self.var_map and self.var_map[var].endswith("(a0)")]
+        
+        print(f"Register allocation: {len(self.vars_in_registers)} variables in registers, "
+              f"{len(self.vars_in_memory)} variables spilled to memory")
     
     def _emit_function_prologue(self):
         """
-        Generate function prologue - load variables from memory into s registers
+        Generate function prologue - load entry-live variables from memory into s registers.
+        Only loads variables that are allocated to registers (not spilled to memory).
         """
         self.prologue = []
         self.prologue.append(f".globl {self.name}")
@@ -88,19 +160,27 @@ class RISC_V_CodeGenerator:
         self.prologue.append(f"    addi sp, sp, -{8*self.max_stack}")
         self.prologue.append("    # Variable array pointer in a0")
         
-        # Load each variable into its corresponding s register
-        for i, var in enumerate(self.variables):
-            if i<=10:
-                offset = i * 8  # offset = index * 8 (first variable at offset 0)
-                s_reg = self.var_map[var]
-                self.prologue.append(f"    # {s_reg}<-{var}")
-                self.prologue.append(f"    ld {s_reg}, {offset}(a0)")
+        # Load ONLY entry-live variables that are in registers (not spilled)
+        # According to Task 9: only load variables that are live at entry
+        entry_live_vars = self.optimizer.IN.get("entry", set())
+        
+        for var in self.variables:
+            # Only load if: 1) variable is entry-live, 2) variable is in a register
+            if var in entry_live_vars:
+                var_reg = self.var_map.get(var)
+                if var_reg and not var_reg.endswith("(a0)"):  # Variable is in a register
+                    # Calculate offset based on variable's position in sorted list of all variables
+                    var_index = self.variables.index(var)
+                    offset = var_index * 8  # offset = index * 8 (first variable at offset 0)
+                    self.prologue.append(f"    # {var_reg}<-{var} (entry-live)")
+                    self.prologue.append(f"    ld {var_reg}, {offset}(a0)")
         
         self.prologue.append("")
     
     def _emit_function_epilogue(self):
         """
-        Generate function epilogue - save s registers back to memory
+        Generate function epilogue - save variables that are live at exit back to memory.
+        Only saves variables that are in registers (not already in memory).
         """
         self.epilogue = []
         self.epilogue.append("")
@@ -109,13 +189,20 @@ class RISC_V_CodeGenerator:
         self.epilogue.append("    # Deallocate stack")
         self.epilogue.append(f"    addi sp, sp, {8*self.max_stack}")
 
-        # Save each variable from its s register back to memory
-        for i, var in enumerate(self.variables):
-            if i<=10:
-                offset = i * 8  # offset = index * 8
-                s_reg = self.var_map[var]
-                self.epilogue.append(f"    # {var}<-{s_reg}")
-                self.epilogue.append(f"    sd {s_reg}, {offset}(a0)")
+        # Save ONLY exit-live variables that are in registers back to memory
+        # According to Task 9: only save variables that are live at exit (typically just "output")
+        exit_live_vars = self.optimizer.OUT.get("exit", set())
+        
+        for var in self.variables:
+            # Only save if: 1) variable is exit-live, 2) variable is in a register
+            if var in exit_live_vars:
+                var_reg = self.var_map.get(var)
+                if var_reg and not var_reg.endswith("(a0)"):  # Variable is in a register
+                    # Calculate offset based on variable's position
+                    var_index = self.variables.index(var)
+                    offset = var_index * 8  # offset = index * 8
+                    self.epilogue.append(f"    # {var}<-{var_reg} (exit-live)")
+                    self.epilogue.append(f"    sd {var_reg}, {offset}(a0)")
         
         self.epilogue.append("    ret")
     
@@ -158,12 +245,13 @@ class RISC_V_CodeGenerator:
             # result will be in t0
             result_reg = self._generate_expression(ast.children[1])
             
-            # Move result to variable's s register
+            # Move result to variable's s register or memory
             if result_reg != var_reg:
-                if var_reg[-1] == ")":
-                    # spillage
+                if var_reg.endswith("(a0)"):
+                    # Variable is spilled to memory
                     self.gen(f"    sd {result_reg}, {var_reg}")
                 else:
+                    # Variable is in a register
                     self.gen(f"    mv {var_reg}, {result_reg}")
         else:
             self._generate_expression(ast)
@@ -186,15 +274,19 @@ class RISC_V_CodeGenerator:
             self.gen(f"    li {result_reg}, {value}")
             return result_reg
         elif node.type == "var":
-            # Variable - get its s register
+            # Variable - get its register or memory location
             var_name = node.value
-            var_reg = self.var_map[var_name]
-            if var_reg[-1] == ")":
-                # variable is in address space, not s-register
+            var_reg = self.var_map.get(var_name)
+            if var_reg and var_reg.endswith("(a0)"):
+                # Variable is spilled to memory, load it into result register
                 self.gen(f"    ld {result_reg}, {var_reg}")
                 return result_reg
-            else:
+            elif var_reg:
+                # Variable is in a register
                 return var_reg
+            else:
+                # Variable not found (shouldn't happen, but handle gracefully)
+                raise ValueError(f"Variable {var_name} not found in var_map")
         elif node.type in ["true", "false"]:
             # Boolean constant
             if node.type == "true":
