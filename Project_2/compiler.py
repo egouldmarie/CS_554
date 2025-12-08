@@ -157,7 +157,7 @@ if __name__ == "__main__":
     # the RISC-V assembly code                 #
     # ======================================== #
     codegen = RISC_V_CodeGenerator(function_name)
-    assembly = codegen.generate(cfg.nodes)  # Generate from CFG instead of AST
+    assembly = codegen.generate(cfg.nodes, optimizer)  # Generate from CFG instead of AST
     print("\nRISC-V Assembly Code:")
     print("-" * 70)
     print(assembly)
@@ -204,7 +204,7 @@ if __name__ == "__main__":
           +  "\n"
           +  "    // Check if correct num of args provided\n"
           + f"    if(argc != {num_live_vars + 1}) " + "{\n"
-          + f'        printf("Executable requires {num_live_vars} arguments.\\n");\n'
+          + f'        printf("Executable requires {num_live_vars} argument(s).\\n");\n'
           + f'        printf("Usage: <filename> {printVars}\\n");\n'
           +  "        return EXIT_FAILURE;\n"
           +  "    }\n"
