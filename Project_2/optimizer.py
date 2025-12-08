@@ -80,6 +80,8 @@ class Optimizer:
         if cfg_node.label != "exit":
             for succ in cfg_node.succ:
                 self.OUT[cfg_node.label] = self.OUT[cfg_node.label].union(self.IN[succ.label])
+        else:
+            self.OUT[cfg_node.label].add("output")
 
     def LVA_in(self, cfg_node):
         self.IN[cfg_node.label] = self.GEN[cfg_node.label].union(self.OUT[cfg_node.label].difference(self.KILL[cfg_node.label]))
@@ -112,8 +114,25 @@ class Optimizer:
         """
         Function for eliminating dead code in the CFG
         after constructing the Live Variable sets.
+
+        Adapted from pseudocode on pg 523 in Chapter 10
+        of Engineering a Compiler - 3rd Edition
         """
-        
+
+        print(f"Number of nodes before: {len(self.cfg.nodes)}")
+        # Dead assignments
+        dead = set()        # dead assignments in the CFG
+        nodes = [node for node in self.cfg.nodes]
+        for node in nodes:
+            if node.type not in ["entry", "exit"]:
+                if node.ast.type == "assign":
+                    var = node.ast.children[0].value
+                    if var not in self.OUT[node.label]:
+                        dead.add(f"label_{node.label}: {node.content}")
+                        self.cfg.remove_node(node)
+        print(f"Number of nodes after: {len(self.cfg.nodes)}")
+        print(f"Dead Assignments: {dead}")
+        #
     
     def create_inference_graph(self):
         """
