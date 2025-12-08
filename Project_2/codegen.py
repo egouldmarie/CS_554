@@ -162,7 +162,7 @@ class RISC_V_CodeGenerator:
             if result_reg != var_reg:
                 if var_reg[0] == "(":
                     # spillage
-                    self.gen(f"    ld {result_reg}, {var_reg}")
+                    self.gen(f"    sd {result_reg}, {var_reg}")
                 else:
                     self.gen(f"    mv {var_reg}, {result_reg}")
         else:
