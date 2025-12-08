@@ -1,10 +1,12 @@
-class InferenceGraph:
+class InterferenceGraph:
     def __init__(self):
         self.nodes = set()
         self.edges = {}
     
     def addNode(self, node):
         self.nodes.add(node)
+        if self.edges.get(node) == None:
+            self.edges[node] = set()
 
     def addEdge(self, node1, node2):
         if self.edges.get(node1) != None:
@@ -15,15 +17,37 @@ class InferenceGraph:
             self.edges[node2].add(node1)
         else:
             self.edges[node2] = {node1}
+    
+    def greedyColor(self):
+        """
+        Function for creating a coloring of the Interference Graph.
+        Adapted from Greedy Color Algorithm referenced on
+        Wikipedia: https://en.wikipedia.org/wiki/Greedy_coloring
+        """
+        def firstColor(colors):
+            color = 0
+            while color in colors:
+                color += 1
+            return color
+
+        self.coloring = dict()
+        for node in self.nodes:
+            usedColors = {self.coloring[nbr]
+                                 for nbr in self.edges[node]
+                                 if nbr in self.coloring}
+            self.coloring[node] = firstColor(usedColors)
+        
+        print(f"Coloring: {self.coloring}")
 
 class Optimizer:
-    def __init__(self, cfg):
+    def __init__(self, cfg, outVars={'output'}):
         """
         Class for optimizing code from a CFG,
         utilizes Live Variable Analysis.
 
         Args:
             cfg: A Control Flow Graph object.
+            outVars: A set of variables assumed to be live on exit.
         """
         self.cfg = cfg
 
@@ -34,7 +58,10 @@ class Optimizer:
         self.KILL = {}
         for node in self.cfg.nodes:
             self.IN[node.label] = set()
-            self.OUT[node.label] = set()
+            if node.label == "exit":
+                self.OUT[node.label] = outVars
+            else:
+                self.OUT[node.label] = set()
             self.GEN[node.label] = self.gen(node)
             self.KILL[node.label] = self.kill(node)
 
@@ -47,7 +74,7 @@ class Optimizer:
             print(f"label_{node.label}: {node.content}")
             print(f"LV_in({node.label})  = {gen} ∪ (LV_out({node.label}) / {kill})")
             if node.label == "exit":
-                lv_out = f"LV_out({node.label}) = ∅"
+                lv_out = f"LV_out({node.label}) = "+"{'output'}"
             else:
                 lv_out = f"LV_out({node.label}) ="
             for s in range(len(node.succ)):
@@ -73,6 +100,10 @@ class Optimizer:
         
         # Print Live Variable In and Out sets for each node in the CFG
         print(f"Live variable analysis completed in {iteration} iteration(s).")
+
+        # Eliminate dead code using Live Variable sets
+        self.eliminate_dead_code()
+
         print("Results:\n")
         for node in self.cfg.nodes:
             print(f"label_{node.label}: {node.content}")
@@ -82,18 +113,13 @@ class Optimizer:
             print(f"LV_out({node.label}) = {_out}")
             print("")
         
-        # Eliminate dead code using Live Variable sets
-        self.eliminate_dead_code()
-
-        # Generate Inference Graph
-        self.create_inference_graph()
+        # Generate Interference Graph
+        self.create_interference_graph()
 
     def LVA_out(self, cfg_node):
         if cfg_node.label != "exit":
             for succ in cfg_node.succ:
                 self.OUT[cfg_node.label] = self.OUT[cfg_node.label].union(self.IN[succ.label])
-        else:
-            self.OUT[cfg_node.label].add("output")
 
     def LVA_in(self, cfg_node):
         self.IN[cfg_node.label] = self.GEN[cfg_node.label].union(self.OUT[cfg_node.label].difference(self.KILL[cfg_node.label]))
@@ -132,8 +158,8 @@ class Optimizer:
         """
 
         print(f"Number of nodes before: {len(self.cfg.nodes)}")
-        # Dead assignments
-        dead = set()        # dead assignments in the CFG
+        # Dead assignments in the CFG
+        dead = set()
         nodes = [node for node in self.cfg.nodes]
         for node in nodes:
             if node.type not in ["entry", "exit"]:
@@ -146,31 +172,33 @@ class Optimizer:
                     dead.add(f"label_{node.label}: {node.content}")
                     self.cfg.remove_node(node)
         print(f"Number of nodes after: {len(self.cfg.nodes)}")
-        print(f"Dead Nodes: {dead}")
-        #
+        print(f"Dead Nodes: {dead}\n")
     
-    def create_inference_graph(self):
+    def create_interference_graph(self):
         """
-        Function for creating the inference graph
+        Function for creating the interference graph
         to help with assigning registers.
         """
-        # Create the inference graph for variables
-        infer = InferenceGraph()
-        infer.addNode("output")
+        # Create the interference graph for variables
+        self.interference_graph = InterferenceGraph()
+        self.interference_graph.addNode("output")
         for node in self.cfg.nodes:
             _in = self.IN[node.label]
             _out = self.OUT[node.label]
             for var1 in _in:
-                infer.addNode(var1)
+                self.interference_graph.addNode(var1)
                 for var2 in _in:
                     if var1 != var2:
-                        infer.addEdge(var1, var2)
+                        self.interference_graph.addEdge(var1, var2)
             
             for var1 in _out:
-                infer.addNode(var1)
+                self.interference_graph.addNode(var1)
                 for var2 in _out:
                     if var1 != var2:
-                        infer.addEdge(var1, var2)
+                        self.interference_graph.addEdge(var1, var2)
         
-        print(f"Inference Graph nodes: {infer.nodes}")
-        print(f"Inference Graph edges: {infer.edges}")
+        print(f"Interference Graph nodes: {self.interference_graph.nodes}")
+        print(f"Interference Graph edges: {self.interference_graph.edges}")
+
+        self.interference_graph.greedyColor()
+    
