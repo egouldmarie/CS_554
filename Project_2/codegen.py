@@ -72,7 +72,7 @@ class RISC_V_CodeGenerator:
             if i <= 10:
                 self.var_map[var] = f"s{i+1}"
             else:
-                self.var_map[var] = f"({i*8})a"
+                self.var_map[var] = f"{i*8}(a0)"
     
     def _emit_function_prologue(self):
         """
@@ -160,7 +160,7 @@ class RISC_V_CodeGenerator:
             
             # Move result to variable's s register
             if result_reg != var_reg:
-                if var_reg[0] == "(":
+                if var_reg[1] == ")":
                     # spillage
                     self.gen(f"    sd {result_reg}, {var_reg}")
                 else:
@@ -189,7 +189,7 @@ class RISC_V_CodeGenerator:
             # Variable - get its s register
             var_name = node.value
             var_reg = self.var_map[var_name]
-            if var_reg[0] == "(":
+            if var_reg[-1] == ")":
                 # variable is in address space, not s-register
                 self.gen(f"    ld {result_reg}, {var_reg}")
                 return result_reg
