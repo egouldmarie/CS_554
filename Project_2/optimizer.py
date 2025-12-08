@@ -40,13 +40,14 @@ class InferenceGraph:
         print(f"Coloring: {self.coloring}")
 
 class Optimizer:
-    def __init__(self, cfg):
+    def __init__(self, cfg, outVars={'output'}):
         """
         Class for optimizing code from a CFG,
         utilizes Live Variable Analysis.
 
         Args:
             cfg: A Control Flow Graph object.
+            outVars: A set of variables assumed to be live on exit.
         """
         self.cfg = cfg
 
@@ -57,7 +58,10 @@ class Optimizer:
         self.KILL = {}
         for node in self.cfg.nodes:
             self.IN[node.label] = set()
-            self.OUT[node.label] = set()
+            if node.label == "exit":
+                self.OUT[node.label] = outVars
+            else:
+                self.OUT[node.label] = set()
             self.GEN[node.label] = self.gen(node)
             self.KILL[node.label] = self.kill(node)
 
@@ -116,8 +120,6 @@ class Optimizer:
         if cfg_node.label != "exit":
             for succ in cfg_node.succ:
                 self.OUT[cfg_node.label] = self.OUT[cfg_node.label].union(self.IN[succ.label])
-        else:
-            self.OUT[cfg_node.label].add("output")
 
     def LVA_in(self, cfg_node):
         self.IN[cfg_node.label] = self.GEN[cfg_node.label].union(self.OUT[cfg_node.label].difference(self.KILL[cfg_node.label]))
