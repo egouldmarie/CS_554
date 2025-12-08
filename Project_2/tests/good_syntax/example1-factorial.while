@@ -1,5 +1,7 @@
 {-
-Computes the factorial of the number stored in x and leaves the result in z:
+Computes the factorial of
+the number stored in x and
+leaves the result in z:
 -}
 
 y := x;
@@ -10,3 +12,4 @@ while y > 1 do
 od;
 y := 0;
 output := z
+
