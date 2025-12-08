@@ -160,7 +160,7 @@ class RISC_V_CodeGenerator:
             
             # Move result to variable's s register
             if result_reg != var_reg:
-                if var_reg[1] == ")":
+                if var_reg[-1] == ")":
                     # spillage
                     self.gen(f"    sd {result_reg}, {var_reg}")
                 else:
