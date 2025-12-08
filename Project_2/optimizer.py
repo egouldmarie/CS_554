@@ -5,6 +5,8 @@ class InferenceGraph:
     
     def addNode(self, node):
         self.nodes.add(node)
+        if self.edges.get(node) == None:
+            self.edges[node] = set()
 
     def addEdge(self, node1, node2):
         if self.edges.get(node1) != None:
@@ -15,6 +17,27 @@ class InferenceGraph:
             self.edges[node2].add(node1)
         else:
             self.edges[node2] = {node1}
+    
+    def greedyColor(self):
+        """
+        Function for creating a coloring of the Inference Graph.
+        Adapted from Greedy Color Algorithm referenced on
+        Wikipedia: https://en.wikipedia.org/wiki/Greedy_coloring
+        """
+        def firstColor(colors):
+            color = 0
+            while color in colors:
+                color += 1
+            return color
+
+        self.coloring = dict()
+        for node in self.nodes:
+            usedColors = {self.coloring[nbr]
+                                 for nbr in self.edges[node]
+                                 if nbr in self.coloring}
+            self.coloring[node] = firstColor(usedColors)
+        
+        print(f"Coloring: {self.coloring}")
 
 class Optimizer:
     def __init__(self, cfg):
@@ -71,6 +94,9 @@ class Optimizer:
                     changed = True
             iteration = iteration + 1
         
+        # Eliminate dead code using Live Variable sets
+        self.eliminate_dead_code()
+        
         # Print Live Variable In and Out sets for each node in the CFG
         print(f"Live variable analysis completed in {iteration} iteration(s).")
         print("Results:\n")
@@ -82,9 +108,6 @@ class Optimizer:
             print(f"LV_out({node.label}) = {_out}")
             print("")
         
-        # Eliminate dead code using Live Variable sets
-        self.eliminate_dead_code()
-
         # Generate Inference Graph
         self.create_inference_graph()
 
@@ -132,8 +155,8 @@ class Optimizer:
         """
 
         print(f"Number of nodes before: {len(self.cfg.nodes)}")
-        # Dead assignments
-        dead = set()        # dead assignments in the CFG
+        # Dead assignments in the CFG
+        dead = set()
         nodes = [node for node in self.cfg.nodes]
         for node in nodes:
             if node.type not in ["entry", "exit"]:
@@ -147,7 +170,6 @@ class Optimizer:
                     self.cfg.remove_node(node)
         print(f"Number of nodes after: {len(self.cfg.nodes)}")
         print(f"Dead Nodes: {dead}")
-        #
     
     def create_inference_graph(self):
         """
@@ -155,22 +177,25 @@ class Optimizer:
         to help with assigning registers.
         """
         # Create the inference graph for variables
-        infer = InferenceGraph()
-        infer.addNode("output")
+        self.inference_graph = InferenceGraph()
+        self.inference_graph.addNode("output")
         for node in self.cfg.nodes:
             _in = self.IN[node.label]
             _out = self.OUT[node.label]
             for var1 in _in:
-                infer.addNode(var1)
+                self.inference_graph.addNode(var1)
                 for var2 in _in:
                     if var1 != var2:
-                        infer.addEdge(var1, var2)
+                        self.inference_graph.addEdge(var1, var2)
             
             for var1 in _out:
-                infer.addNode(var1)
+                self.inference_graph.addNode(var1)
                 for var2 in _out:
                     if var1 != var2:
-                        infer.addEdge(var1, var2)
+                        self.inference_graph.addEdge(var1, var2)
         
-        print(f"Inference Graph nodes: {infer.nodes}")
-        print(f"Inference Graph edges: {infer.edges}")
+        print(f"Inference Graph nodes: {self.inference_graph.nodes}")
+        print(f"Inference Graph edges: {self.inference_graph.edges}")
+
+        self.inference_graph.greedyColor()
+    
