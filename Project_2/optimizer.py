@@ -3,9 +3,18 @@ class InferenceGraph:
         self.nodes = set()
         self.edges = {}
     
+    def addNode(self, node):
+        self.nodes.add(node)
+
     def addEdge(self, node1, node2):
-        self.edges[node1] = node2
-        self.edges[node2] = node1
+        if self.edges.get(node1) != None:
+            self.edges[node1].add(node2)
+        else:
+            self.edges[node1] = {node2}
+        if self.edges.get(node2) != None:
+            self.edges[node2].add(node1)
+        else:
+            self.edges[node2] = {node1}
 
 class Optimizer:
     def __init__(self, cfg):
@@ -76,6 +85,9 @@ class Optimizer:
         # Eliminate dead code using Live Variable sets
         self.eliminate_dead_code()
 
+        # Generate Inference Graph
+        self.create_inference_graph()
+
     def LVA_out(self, cfg_node):
         if cfg_node.label != "exit":
             for succ in cfg_node.succ:
@@ -144,18 +156,18 @@ class Optimizer:
         """
         # Create the inference graph for variables
         infer = InferenceGraph()
-        infer.nodes.add("output")
+        infer.addNode("output")
         for node in self.cfg.nodes:
             _in = self.IN[node.label]
             _out = self.OUT[node.label]
             for var1 in _in:
-                infer.nodes.add(var1)
+                infer.addNode(var1)
                 for var2 in _in:
                     if var1 != var2:
                         infer.addEdge(var1, var2)
             
             for var1 in _out:
-                infer.nodes.add(var1)
+                infer.addNode(var1)
                 for var2 in _out:
                     if var1 != var2:
                         infer.addEdge(var1, var2)
