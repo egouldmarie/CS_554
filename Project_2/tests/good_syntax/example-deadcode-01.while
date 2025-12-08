@@ -1,4 +1,5 @@
 {-
+  example-deadcode-01.while
   program with several pieces of deadcode
 -}
 n := input;
