@@ -1,4 +1,4 @@
-class InferenceGraph:
+class InterferenceGraph:
     def __init__(self):
         self.nodes = set()
         self.edges = {}
@@ -20,7 +20,7 @@ class InferenceGraph:
     
     def greedyColor(self):
         """
-        Function for creating a coloring of the Inference Graph.
+        Function for creating a coloring of the Interference Graph.
         Adapted from Greedy Color Algorithm referenced on
         Wikipedia: https://en.wikipedia.org/wiki/Greedy_coloring
         """
@@ -113,8 +113,8 @@ class Optimizer:
             print(f"LV_out({node.label}) = {_out}")
             print("")
         
-        # Generate Inference Graph
-        self.create_inference_graph()
+        # Generate Interference Graph
+        self.create_interference_graph()
 
     def LVA_out(self, cfg_node):
         if cfg_node.label != "exit":
@@ -174,31 +174,31 @@ class Optimizer:
         print(f"Number of nodes after: {len(self.cfg.nodes)}")
         print(f"Dead Nodes: {dead}\n")
     
-    def create_inference_graph(self):
+    def create_interference_graph(self):
         """
-        Function for creating the inference graph
+        Function for creating the interference graph
         to help with assigning registers.
         """
-        # Create the inference graph for variables
-        self.inference_graph = InferenceGraph()
-        self.inference_graph.addNode("output")
+        # Create the interference graph for variables
+        self.interference_graph = InterferenceGraph()
+        self.interference_graph.addNode("output")
         for node in self.cfg.nodes:
             _in = self.IN[node.label]
             _out = self.OUT[node.label]
             for var1 in _in:
-                self.inference_graph.addNode(var1)
+                self.interference_graph.addNode(var1)
                 for var2 in _in:
                     if var1 != var2:
-                        self.inference_graph.addEdge(var1, var2)
+                        self.interference_graph.addEdge(var1, var2)
             
             for var1 in _out:
-                self.inference_graph.addNode(var1)
+                self.interference_graph.addNode(var1)
                 for var2 in _out:
                     if var1 != var2:
-                        self.inference_graph.addEdge(var1, var2)
+                        self.interference_graph.addEdge(var1, var2)
         
-        print(f"Inference Graph nodes: {self.inference_graph.nodes}")
-        print(f"Inference Graph edges: {self.inference_graph.edges}")
+        print(f"Interference Graph nodes: {self.interference_graph.nodes}")
+        print(f"Interference Graph edges: {self.interference_graph.edges}")
 
-        self.inference_graph.greedyColor()
+        self.interference_graph.greedyColor()
     
