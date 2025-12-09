@@ -168,6 +168,39 @@ class Optimizer:
                     if var not in self.OUT[node.label]:
                         dead.add(f"label_{node.label}: {node.content}")
                         self.cfg.remove_node(node)
+
+                # == consider various skip scenarios == #
+                # (1) skip after an assign or entry
+                elif (node.ast.type == "skip"
+                      and len(node.pred)==1
+                      and (node.pred[0].type == "entry"
+                           or node.pred[0].ast.type == "assign")):
+                    dead.add(f"label_{node.label}: {node.content}")
+                    self.cfg.remove_node(node)
+                # (2) skip appears first in while-do loop
+                elif (node.ast.type == "skip" and
+                      "while" in node.pred[0].content):
+                    dead.add(f"label_{node.label}: {node.content}")
+                    self.cfg.remove_node(node)
+                # (3) skip appears first in an ELSE block of an IF
+                elif (node.ast.type == "skip"
+                      and "if" in node.pred[0].content
+                      and node.pred[0].succ[1] is node):
+                    dead.add(f"label_{node.label}: {node.content}")
+                    self.cfg.remove_node(node)
+                # (x) other
+                # elif node.ast.type == "skip":
+                #     print(f"\n==================")
+                #     print(f"skip node predecessors:")
+                #     for pred_node in node.pred:
+                #         print(f"label_{pred_node.label}: ({pred_node.type}) {pred_node.content}")
+                #         if "if" in pred_node.content:
+                #             print(f"    This skip is in an IF block!")
+                #         print(f"    pred_node.ast.type: {pred_node.ast.type}")
+                #         print(f"pred_node successors are: ")
+                #         for succ in pred_node.succ:
+                #             print(f"    label_{succ.label}: {succ.content}")
+                #     print(f"==================\n")
         print(f"Number of nodes after: {len(self.cfg.nodes)}")
         print(f"Dead Nodes: {dead}\n")
     
