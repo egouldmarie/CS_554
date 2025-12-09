@@ -188,11 +188,16 @@ class CFG:
         for succ in succs:
             succ.pred.remove(node)
             for pred in preds:
+                # removing an initial "skip" in if-then block requires
+                # maintaining the order of predecessors' successors
+                # so we use insert instead of append in general
+                removal_idx = pred.succ.index(node)
                 pred.succ.remove(node)
                 if pred != succ:
                     if pred not in succ.pred:
                         succ.pred.append(pred)
-                        pred.succ.append(succ)
+                        # pred.succ.append(succ)
+                        pred.succ.insert(removal_idx, succ)
                     else:
                         # unnecessary if branch
                         trim.add(pred)
