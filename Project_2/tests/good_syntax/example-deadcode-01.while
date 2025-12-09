@@ -6,7 +6,9 @@ n := input;
 steps := 0;
 -- loop containing a meaningless (dead code) assignment
 while n > 1 do
+  skip;
   n := n - 1;
+  skip;
   steps := steps + 1;
   k := 3  -- dead code
 od;
