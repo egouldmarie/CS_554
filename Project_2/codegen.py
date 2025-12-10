@@ -22,11 +22,14 @@ class RISC_V_CodeGenerator:
         self.code = []
         self.name = name
 
+        self.stack = []
         self.pointer = 0
         self.max_stack = 0
 
         self.var_map = {}       # Map variable names to s registers (s1, s2, s3, ...)
         self.variables = []     # List of all variables in order
+
+        self.temp_in_use = {"t0":False, "t1":False}
 
     def gen(self, instruction):
         """
@@ -129,12 +132,8 @@ class RISC_V_CodeGenerator:
                     var_index = self.variables.index(var)
                     self.var_map[var] = f"{var_index * 8}(a0)"
             else:
-                # Variable not in coloring (shouldn't happen, but handle it)
-                var_index = self.variables.index(var)
-                if var_index < MAX_REGISTERS:
-                    self.var_map[var] = f"s{var_index + 1}"
-                else:
-                    self.var_map[var] = f"{var_index * 8}(a0)"
+                # Variable not in coloring (shouldn't happen)
+                raise ValueError("Variable not in graph coloring")
         
         # Store information about which variables are in registers vs memory
         self.vars_in_registers = [var for var in self.variables 
@@ -142,8 +141,19 @@ class RISC_V_CodeGenerator:
         self.vars_in_memory = [var for var in self.variables 
                               if var in self.var_map and self.var_map[var].endswith("(a0)")]
         
-        print(f"Register allocation: {len(self.vars_in_registers)} variables in registers, "
-              f"{len(self.vars_in_memory)} variables spilled to memory")
+        # total number of s-registers used
+        s_registers = set()
+        for var in self.variables:
+            if not self.var_map[var].endswith("(a0)"):
+                s_registers.add(self.var_map[var])
+
+        print(f"Register allocation: {len(self.vars_in_registers)} variables in {len(s_registers)} registers, "
+              f"{len(self.vars_in_memory)} variables spilled to memory\n{self.var_map}")
+        
+        # Allow unused s registers to be used for stack
+        for i in range(len(s_registers)+1, MAX_REGISTERS):
+            self.stack.append(f"s{i}")
+        print(f"Stack: {self.stack}")
     
     def _emit_function_prologue(self):
         """
@@ -156,8 +166,11 @@ class RISC_V_CodeGenerator:
         self.prologue.append(f"{self.name}:")
         self.prologue.append("    # Function prologue")
         # allocate stack
-        self.prologue.append("    # Allocate stack")
-        self.prologue.append(f"    addi sp, sp, -{8*self.max_stack}")
+        if self.max_stack > 0:
+            self.prologue.append("    # Allocate stack")
+            self.prologue.append(f"    addi sp, sp, -{8*self.max_stack}")
+        else:
+            self.prologue.append("    # Stack not needed")
         self.prologue.append("    # Variable array pointer in a0")
         
         # Load ONLY entry-live variables that are in registers (not spilled)
@@ -186,8 +199,9 @@ class RISC_V_CodeGenerator:
         self.epilogue.append("")
         self.epilogue.append("    # Function epilogue")
         # deallocate stack
-        self.epilogue.append("    # Deallocate stack")
-        self.epilogue.append(f"    addi sp, sp, {8*self.max_stack}")
+        if self.max_stack > 0:
+            self.epilogue.append("    # Deallocate stack")
+            self.epilogue.append(f"    addi sp, sp, {8*self.max_stack}")
 
         # Save ONLY exit-live variables that are in registers back to memory
         # According to Task 9: only save variables that are live at exit (typically just "output")
@@ -207,14 +221,23 @@ class RISC_V_CodeGenerator:
         self.epilogue.append("    ret")
     
     def _push(self, register="t0"):
-        self.gen(f"    sd {register}, {self.pointer*8}(sp)")
+        self.gen("    # push")
+        if self.pointer >= len(self.stack):
+            self.gen(f"    sd {register}, {(self.pointer-len(self.stack))*8}(sp)")
+        else:
+            self.gen(f"    mv {self.stack[self.pointer]}, {register}")
         self.pointer = self.pointer + 1
-        if self.pointer > self.max_stack:
-            self.max_stack = self.pointer
+        if self.pointer - len(self.stack) > self.max_stack:
+            # keep track of max stack size in order to allocate appropriate space
+            self.max_stack = self.pointer - len(self.stack)
     
     def _pop(self, register="t0"):
+        self.gen("    # pop")
         self.pointer = self.pointer - 1
-        self.gen(f"    ld {register}, {self.pointer*8}(sp)")
+        if self.pointer >= len(self.stack):
+            self.gen(f"    ld {register}, {(self.pointer-len(self.stack))*8}(sp)")
+        else:
+            self.gen(f"    mv {register}, {self.stack[self.pointer]}")
     
     def _generate_from_cfg(self, nodes):
         """
@@ -240,6 +263,9 @@ class RISC_V_CodeGenerator:
         if ast.type == "skip":
             self.gen(f"    # skip")
         elif ast.type == "assign":
+            self.temp_in_use["t0"] = False
+            self.temp_in_use["t1"] = False
+
             var_reg = self.var_map[ast.children[0].value]
             
             # result will be in t0
@@ -271,8 +297,12 @@ class RISC_V_CodeGenerator:
         if node.type == "int":
             # Integer constant
             value = node.value
-            self.gen(f"    li {result_reg}, {value}")
-            return result_reg
+            if node.value == 0:
+                return "x0"
+            else:
+                self.gen(f"    li {result_reg}, {value}")
+                self.temp_in_use[result_reg] = True
+                return result_reg
         elif node.type == "var":
             # Variable - get its register or memory location
             var_name = node.value
@@ -297,19 +327,23 @@ class RISC_V_CodeGenerator:
         elif node.type in ["add", "sub", "mult", "=", "<", ">", "<=", ">=", "and", "or"]:
             # Binary operation
             # Evaluate left expression
-            left_reg = self._generate_expression(node.children[0])
+            left_reg = self._generate_expression(node.children[0], result_reg)
 
             # Evaluate right expression
-            if left_reg == "t0" and node.children[1].type not in ["int", "var"]:
-                # push into stack
-                self._push(left_reg)
-                # right_reg = t0
-                right_reg = self._generate_expression(node.children[1])
-                left_reg = "t1"
-                self._pop(left_reg)
-            else:
-                # left_reg = t0, right_reg = t1
-                right_reg = self._generate_expression(node.children[1], "t1")
+            need_to_pop = False
+            right_reg = result_reg
+            # determine which register to potentially store
+            # result of evaluated right expression
+            if left_reg == result_reg:
+                right_reg = "t1" if left_reg == "t0" else "t0"
+                if self.temp_in_use[right_reg]:
+                    # if temporary register is already in use,
+                    # store value in register in the stack
+                    self._push(right_reg)
+                    # mark for popping back after operation
+                    need_to_pop = True
+
+            right_reg = self._generate_expression(node.children[1], right_reg)
 
             # Perform operation
             if node.type == "add":
@@ -335,7 +369,16 @@ class RISC_V_CodeGenerator:
                 self.gen(f"    and {result_reg}, {left_reg}, {right_reg}")
             elif node.type == "or":
                 self.gen(f"    or {result_reg}, {left_reg}, {right_reg}")
-            
+
+            if need_to_pop:
+                # return previous value to the temporary register used
+                # to hold the right side of the expression
+                self._pop(right_reg)
+                self.temp_in_use[right_reg] = True
+
+            if result_reg in ["t0", "t1"]:
+                self.temp_in_use[result_reg] = True
+
             return result_reg
         elif node.type == "not":
             # Logical NOT (Unary Operator)
