@@ -22,13 +22,13 @@ class RISC_V_CodeGenerator:
         self.code = []
         self.name = name
 
-        self.stack = []
         self.pointer = 0
         self.max_stack = 0
 
         self.var_map = {}       # Map variable names to s registers (s1, s2, s3, ...)
         self.variables = []     # List of all variables in order
 
+        self.temp_reg = ["t0", "t1"]
         self.temp_in_use = {"t0":False, "t1":False}
 
     def gen(self, instruction):
@@ -150,10 +150,11 @@ class RISC_V_CodeGenerator:
         print(f"Register allocation: {len(self.vars_in_registers)} variables in {len(s_registers)} registers, "
               f"{len(self.vars_in_memory)} variables spilled to memory\n{self.var_map}")
         
-        # Allow unused s registers to be used for stack
+        # Allow unused s registers to be used for temporary register
         for i in range(len(s_registers)+1, MAX_REGISTERS):
-            self.stack.append(f"s{i}")
-        print(f"Stack: {self.stack}")
+            self.temp_reg.append(f"s{i}")
+            self.temp_in_use[f"s{i}"] = False
+        print(f"Temporary Registers: {self.temp_reg}")
     
     def _emit_function_prologue(self):
         """
@@ -222,22 +223,17 @@ class RISC_V_CodeGenerator:
     
     def _push(self, register="t0"):
         self.gen("    # push")
-        if self.pointer >= len(self.stack):
-            self.gen(f"    sd {register}, {(self.pointer-len(self.stack))*8}(sp)")
-        else:
-            self.gen(f"    mv {self.stack[self.pointer]}, {register}")
+        self.gen(f"    sd {register}, {(self.pointer)*8}(sp)")
+
         self.pointer = self.pointer + 1
-        if self.pointer - len(self.stack) > self.max_stack:
+        if self.pointer > self.max_stack:
             # keep track of max stack size in order to allocate appropriate space
-            self.max_stack = self.pointer - len(self.stack)
+            self.max_stack = self.pointer
     
     def _pop(self, register="t0"):
         self.gen("    # pop")
         self.pointer = self.pointer - 1
-        if self.pointer >= len(self.stack):
-            self.gen(f"    ld {register}, {(self.pointer-len(self.stack))*8}(sp)")
-        else:
-            self.gen(f"    mv {register}, {self.stack[self.pointer]}")
+        self.gen(f"    ld {register}, {(self.pointer)*8}(sp)")
     
     def _generate_from_cfg(self, nodes):
         """
@@ -260,12 +256,12 @@ class RISC_V_CodeGenerator:
                     self.gen(f"    j label_{node.succ[0].label}")
     
     def _generate_from_ast(self, ast):
+        for temp in self.temp_reg:
+            self.temp_in_use[temp] = False
+
         if ast.type == "skip":
             self.gen(f"    # skip")
         elif ast.type == "assign":
-            self.temp_in_use["t0"] = False
-            self.temp_in_use["t1"] = False
-
             var_reg = self.var_map[ast.children[0].value]
             
             # result will be in t0
@@ -335,7 +331,9 @@ class RISC_V_CodeGenerator:
             # determine which register to potentially store
             # result of evaluated right expression
             if left_reg == result_reg:
-                right_reg = "t1" if left_reg == "t0" else "t0"
+                next_idx = self.temp_reg.index(left_reg) + 1
+                next_idx = next_idx if next_idx < len(self.temp_reg) else 0
+                right_reg = self.temp_reg[next_idx]
                 if self.temp_in_use[right_reg]:
                     # if temporary register is already in use,
                     # store value in register in the stack
