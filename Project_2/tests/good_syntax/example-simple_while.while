@@ -1,3 +1,5 @@
+counter := input;
 while counter >=0 do
 counter := counter - 1
-od
+od;
+output := counter
