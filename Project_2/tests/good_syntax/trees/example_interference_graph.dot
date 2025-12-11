@@ -1,0 +1,14 @@
+graph Tree {
+    "n" [label="n"];
+    "steps" [label="steps"];
+    "input" [label="input"];
+    "m" [label="m"];
+    "output" [label="output"];
+    "j" [label="j"];
+
+    // Define edges (undirected)
+    "m" -- "steps", "input", "n", "j";
+    "input" -- "j";
+    "j" -- "steps", "n";
+    "n" -- "steps";
+}
