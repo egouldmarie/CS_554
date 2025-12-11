@@ -1,9 +1,9 @@
 graph Tree {
     "n" [label="n"];
-    "steps" [label="steps"];
     "input" [label="input"];
-    "m" [label="m"];
     "output" [label="output"];
+    "steps" [label="steps"];
+    "m" [label="m"];
     "j" [label="j"];
 
     // Define edges (undirected)

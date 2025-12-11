@@ -1,0 +1,14 @@
+graph Tree {
+    "n" [label="n", style=filled, color=burlywood];
+    "input" [label="input", style=filled, color=burlywood];
+    "output" [label="output", style=filled, color=burlywood];
+    "steps" [label="steps", style=filled, color=lightblue];
+    "m" [label="m", style=filled, color=red];
+    "j" [label="j", style=filled, color=yellowgreen];
+
+    // Define edges (undirected)
+    "m" -- "steps", "input", "n", "j";
+    "input" -- "j";
+    "j" -- "steps", "n";
+    "n" -- "steps";
+}
