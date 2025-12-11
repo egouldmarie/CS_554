@@ -1,6 +1,6 @@
 
-counter = input;
+counter := input;
 while counter >=0 do
-counter := counter - 1
+  counter := counter - 1
 od;
-output = counter
+output := counter
